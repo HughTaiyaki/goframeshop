@@ -8,6 +8,7 @@ import (
 	"github.com/gogf/gf/v2/os/gcmd"
 
 	"github.com/hughtaiyaki/goframeshop/app/gateway-h5/internal/controller/banner"
+	"github.com/hughtaiyaki/goframeshop/app/gateway-h5/internal/controller/cart"
 	"github.com/hughtaiyaki/goframeshop/app/gateway-h5/internal/controller/goods"
 	"github.com/hughtaiyaki/goframeshop/app/gateway-h5/internal/controller/interaction"
 	"github.com/hughtaiyaki/goframeshop/app/gateway-h5/internal/controller/order"
@@ -67,6 +68,7 @@ var (
 						search.NewV1(),
 						order.NewV1(),
 						banner.NewV1(),
+						cart.NewV1(),
 					)
 				})
 			})

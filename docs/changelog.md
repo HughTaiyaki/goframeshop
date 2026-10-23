@@ -2,6 +2,22 @@
 
 每完成一个任务，在最上面加一节：新增了什么、改了什么、有哪些需要手动执行的步骤。细节和决定见对应的任务文件。
 
+## 0016 · 购物车
+
+[任务文件](../tasks/0016-cart.md) · [开发说明](development/goods-service.md#9-购物车)
+
+- **新增接口**
+  - 前台（需要登录）：`GET/POST/PUT/DELETE /frontend/cart`（列表、加购、改数量、批量删除）。
+  - 下单接口新增 `fromCart`：从购物车结算时填 `true`。
+  - goods 服务：`cart/v1.CartService`，只接受商城用户令牌。
+- **新增事件** `order.placed`：订单库存预留成功时写入 outbox；goods 消费，从购物车里减去已购数量（只处理 `fromCart` 的订单，下单之后改过的行不动）。新增队列 `goods.cart-order-placed`。
+- **新增表和列** `goods.cart_item`（`(user_id, goods_id)` 唯一）；`orders.order_info.from_cart`。订单的 `created_at` 改为由订单服务写入，和事件里的下单时间一致。
+- **修复：两种以上商品的订单一直卡在"预留中"**。goods 库存接口的校验规则把商品列表当成 JSON 文本量长度，两行就超过 50 个字符被拒绝；订单服务当成"结果未知"一直重试，直到超时关单。见任务文件。
+- **需要手动执行**
+  - `make db-init`（015）。
+  - `app/goods` 的配置里加上 `jwtUser` 一节，填**商城用户**的公钥（和 gateway-h5 的 `jwt.publicKey` 相同，见 `config.yaml.example`）。不加的话购物车不可用，其他功能照常。
+  - 重启 goods、order、gateway-h5。
+
 ## 0015 · 前台接口补齐与热门推荐
 
 [任务文件](../tasks/0015-frontend-api-and-hot-goods.md) · [开发说明](development/goods-service.md#8-热门推荐)

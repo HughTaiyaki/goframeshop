@@ -40,7 +40,8 @@ message ReserveInventoryRequest {
   // v:required|length:1,64
   string order_id = 2;
   // Duplicate goods ids are merged. All items succeed together or none do.
-  // v:required|length:1,50
+  // At most 50, checked by the service (task 0016).
+  // v:required
   repeated InventoryItem items = 3;
 }
 
@@ -59,7 +60,8 @@ message ReleaseInventoryRequest {
   string operation_id = 1;
   // v:required|length:1,64
   string order_id = 2;
-  // v:required|length:1,50
+  // At most 50, checked by the service (task 0016).
+  // v:required
   repeated InventoryItem items = 3;
 }
 

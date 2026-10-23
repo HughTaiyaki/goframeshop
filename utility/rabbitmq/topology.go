@@ -25,6 +25,8 @@ const (
 	KeyOrderExpiryDue = "order.expiry.due"
 	// goods.changed: a goods' name, shelf status or existence changed.
 	KeyGoodsChanged = "goods.changed"
+	// order.placed: an order got its stock and became payable.
+	KeyOrderPlaced = "order.placed"
 
 	// QueueOrderExpiryDelay holds payment_pending messages until they
 	// expire. Nobody consumes it; RabbitMQ dead-letters each message to
@@ -38,6 +40,9 @@ const (
 	// QueueBannerGoods is consumed by the banner service: keep the goods
 	// copied into hand-picked slots up to date.
 	QueueBannerGoods = "banner.goods-changed"
+	// QueueCartOrderPlaced is consumed by the goods service: take the goods
+	// of an order checked out from the cart out of the cart.
+	QueueCartOrderPlaced = "goods.cart-order-placed"
 )
 
 // Queue is one durable queue and the routing keys bound to it.
@@ -61,6 +66,7 @@ var Topology = []Queue{
 	},
 	{Name: QueueOrderExpiry, Bindings: []string{KeyOrderExpiryDue}},
 	{Name: QueueBannerGoods, Bindings: []string{KeyGoodsChanged}},
+	{Name: QueueCartOrderPlaced, Bindings: []string{KeyOrderPlaced}},
 }
 
 // Declare creates the exchange and every queue and binding in Topology.

@@ -39,7 +39,10 @@ func (f *fakeOrders) Create(_ context.Context, o *service.Order) (uint64, error)
 	}
 	f.nextID++
 	stored := f.copyOf(o)
-	stored.ID, stored.CreatedAt = f.nextID, time.Now()
+	stored.ID = f.nextID
+	if stored.CreatedAt.IsZero() {
+		stored.CreatedAt = time.Now()
+	}
 	f.rows[f.nextID] = stored
 	return f.nextID, nil
 }

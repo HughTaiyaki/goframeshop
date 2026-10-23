@@ -25,7 +25,7 @@ func (c *Controller) CreateOrder(ctx context.Context, req *v1.CreateOrderRequest
 	if err != nil {
 		return nil, err
 	}
-	in := &service.CreateInput{RequestID: req.RequestId, ConsigneeID: req.ConsigneeId, Remark: req.Remark}
+	in := &service.CreateInput{RequestID: req.RequestId, ConsigneeID: req.ConsigneeId, Remark: req.Remark, FromCart: req.FromCart}
 	for _, item := range req.Items {
 		in.Items = append(in.Items, service.ItemInput{GoodsID: item.GetGoodsId(), Quantity: item.GetQuantity()})
 	}

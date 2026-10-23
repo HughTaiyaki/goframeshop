@@ -203,8 +203,9 @@ type ReserveInventoryRequest struct {
 	// v:required|length:1,64
 	OrderId string `protobuf:"bytes,2,opt,name=order_id,json=orderId,proto3" json:"order_id,omitempty" v:"required|length:1,64"`
 	// Duplicate goods ids are merged. All items succeed together or none do.
-	// v:required|length:1,50
-	Items         []*InventoryItem `protobuf:"bytes,3,rep,name=items,proto3" json:"items,omitempty" dc:"Duplicate goods ids are merged. All items succeed together or none do." v:"required|length:1,50"`
+	// At most 50, checked by the service (task 0016).
+	// v:required
+	Items         []*InventoryItem `protobuf:"bytes,3,rep,name=items,proto3" json:"items,omitempty" dc:"Duplicate goods ids are merged. All items succeed together or none do.At most 50, checked by the service (task 0016)." v:"required"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -323,8 +324,9 @@ type ReleaseInventoryRequest struct {
 	OperationId string `protobuf:"bytes,1,opt,name=operation_id,json=operationId,proto3" json:"operation_id,omitempty" v:"required|length:1,64"`
 	// v:required|length:1,64
 	OrderId string `protobuf:"bytes,2,opt,name=order_id,json=orderId,proto3" json:"order_id,omitempty" v:"required|length:1,64"`
-	// v:required|length:1,50
-	Items         []*InventoryItem `protobuf:"bytes,3,rep,name=items,proto3" json:"items,omitempty" v:"required|length:1,50"`
+	// At most 50, checked by the service (task 0016).
+	// v:required
+	Items         []*InventoryItem `protobuf:"bytes,3,rep,name=items,proto3" json:"items,omitempty" dc:"At most 50, checked by the service (task 0016)." v:"required"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }

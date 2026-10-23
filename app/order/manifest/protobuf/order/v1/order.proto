@@ -52,6 +52,9 @@ message CreateOrderRequest {
   uint64 consignee_id = 3;
   // v:length:0,255
   string remark = 4;
+  // The shopper checked out from the cart: once the order is placed, the
+  // goods service takes the bought quantities out of the cart.
+  bool from_cart = 5;
 }
 
 message CancelOrderRequest {

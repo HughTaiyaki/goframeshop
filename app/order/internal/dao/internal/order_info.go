@@ -33,6 +33,7 @@ type OrderInfoColumns struct {
 	ConsigneePhone   string //
 	ConsigneeAddress string //
 	Remark           string //
+	FromCart         string // 1: checked out from the cart
 	ReserveDeadline  string //
 	ExpiresAt        string //
 	ClosedAt         string //
@@ -55,6 +56,7 @@ var orderInfoColumns = OrderInfoColumns{
 	ConsigneePhone:   "consignee_phone",
 	ConsigneeAddress: "consignee_address",
 	Remark:           "remark",
+	FromCart:         "from_cart",
 	ReserveDeadline:  "reserve_deadline",
 	ExpiresAt:        "expires_at",
 	ClosedAt:         "closed_at",

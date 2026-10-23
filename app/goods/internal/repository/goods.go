@@ -66,6 +66,21 @@ func (r *goodsRepository) FindByID(ctx context.Context, id uint64) (*entity.Good
 	return &goods, nil
 }
 
+func (r *goodsRepository) FindByIDs(ctx context.Context, ids []uint64) (map[uint64]*entity.GoodsInfo, error) {
+	out := make(map[uint64]*entity.GoodsInfo, len(ids))
+	if len(ids) == 0 {
+		return out, nil
+	}
+	var rows []*entity.GoodsInfo
+	if err := dao.GoodsInfo.Ctx(ctx).WhereIn(dao.GoodsInfo.Columns().Id, ids).Scan(&rows); err != nil {
+		return nil, err
+	}
+	for _, row := range rows {
+		out[row.Id] = row
+	}
+	return out, nil
+}
+
 // Update, SetStatus and SoftDelete each write the change and a goods.changed
 // event in one transaction (design §8.1): banner slots and any later
 // consumer learn about it exactly when it commits, and never about a change

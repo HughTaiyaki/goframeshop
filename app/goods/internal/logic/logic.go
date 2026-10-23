@@ -9,6 +9,7 @@ import (
 
 	"github.com/hughtaiyaki/goframeshop/app/goods/internal/cache"
 	"github.com/hughtaiyaki/goframeshop/app/goods/internal/filelookup"
+	"github.com/hughtaiyaki/goframeshop/app/goods/internal/logic/cart"
 	"github.com/hughtaiyaki/goframeshop/app/goods/internal/logic/category"
 	"github.com/hughtaiyaki/goframeshop/app/goods/internal/logic/goods"
 	"github.com/hughtaiyaki/goframeshop/app/goods/internal/logic/inventory"
@@ -20,6 +21,7 @@ var (
 	goodsService     service.IGoods
 	categoryService  service.ICategory
 	inventoryService service.IInventory
+	cartService      service.ICart
 )
 
 // Init builds the services. It fails only on a malformed cache config; an
@@ -31,12 +33,15 @@ func Init(ctx context.Context) error {
 	}
 	files := filelookup.New()
 	goodsRepo, categoryRepo := repository.NewGoods(), repository.NewCategory()
-	goodsService = goods.New(goodsRepo, repository.NewStock(), repository.NewImage(), categoryRepo, files, c)
+	stocks, images := repository.NewStock(), repository.NewImage()
+	goodsService = goods.New(goodsRepo, stocks, images, categoryRepo, files, c)
 	categoryService = category.New(categoryRepo, goodsRepo, files, c)
 	inventoryService = inventory.New(repository.NewLedger())
+	cartService = cart.New(repository.NewCart(), goodsRepo, images, stocks)
 	return nil
 }
 
 func Goods() service.IGoods         { return goodsService }
 func Category() service.ICategory   { return categoryService }
 func Inventory() service.IInventory { return inventoryService }
+func Cart() service.ICart           { return cartService }

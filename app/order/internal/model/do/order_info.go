@@ -24,6 +24,7 @@ type OrderInfo struct {
 	ConsigneePhone   any         //
 	ConsigneeAddress any         //
 	Remark           any         //
+	FromCart         any         // 1: checked out from the cart
 	ReserveDeadline  *gtime.Time //
 	ExpiresAt        *gtime.Time //
 	ClosedAt         *gtime.Time //

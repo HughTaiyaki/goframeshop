@@ -9,6 +9,7 @@ import (
 	"sort"
 	"sync"
 	"sync/atomic"
+	"time"
 
 	"github.com/gogf/gf/v2/os/gtime"
 
@@ -388,4 +389,127 @@ func (c *Cache) DeleteCategories(context.Context) error {
 	}
 	c.Categories, c.HasCats = nil, false
 	return nil
+}
+
+func (f *Goods) FindByIDs(ctx context.Context, ids []uint64) (map[uint64]*entity.GoodsInfo, error) {
+	out := map[uint64]*entity.GoodsInfo{}
+	for _, id := range ids {
+		row, err := f.FindByID(ctx, id)
+		if err != nil {
+			return nil, err
+		}
+		if row != nil {
+			out[id] = row
+		}
+	}
+	return out, nil
+}
+
+// Cart is an in-memory cart_item table with the same per-user scoping and
+// limit behaviour as the real repository.
+type Cart struct {
+	mu     sync.Mutex
+	Rows   map[uint64]*service.CartItem
+	nextID uint64
+	Now    func() time.Time
+}
+
+func NewCart() *Cart { return &Cart{Rows: map[uint64]*service.CartItem{}, Now: time.Now} }
+
+func (f *Cart) mine(userID uint64) []*service.CartItem {
+	var out []*service.CartItem
+	for _, row := range f.Rows {
+		if row.UserID == userID {
+			c := *row
+			out = append(out, &c)
+		}
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].ID > out[j].ID })
+	return out
+}
+
+func (f *Cart) List(_ context.Context, userID uint64, page, size int) ([]*service.CartItem, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	all := f.mine(userID)
+	start := (page - 1) * size
+	if start >= len(all) {
+		return []*service.CartItem{}, nil
+	}
+	return all[start:min(start+size, len(all))], nil
+}
+
+func (f *Cart) Count(_ context.Context, userID uint64) (int, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return len(f.mine(userID)), nil
+}
+
+func (f *Cart) Find(_ context.Context, userID, itemID uint64) (*service.CartItem, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	row, ok := f.Rows[itemID]
+	if !ok || row.UserID != userID {
+		return nil, nil
+	}
+	c := *row
+	return &c, nil
+}
+
+func (f *Cart) FindByGoods(_ context.Context, userID, goodsID uint64) (*service.CartItem, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	for _, row := range f.Rows {
+		if row.UserID == userID && row.GoodsID == goodsID {
+			c := *row
+			return &c, nil
+		}
+	}
+	return nil, nil
+}
+
+func (f *Cart) Add(ctx context.Context, userID, goodsID uint64, quantity, max uint32) (*service.CartItem, error) {
+	existing, _ := f.FindByGoods(ctx, userID, goodsID)
+	f.mu.Lock()
+	now := f.Now()
+	switch {
+	case existing == nil && quantity > max, existing != nil && existing.Quantity+quantity > max:
+		f.mu.Unlock()
+		return nil, service.ErrCartLimit
+	case existing == nil:
+		f.nextID++
+		f.Rows[f.nextID] = &service.CartItem{
+			ID: f.nextID, UserID: userID, GoodsID: goodsID, Quantity: quantity, CreatedAt: now, UpdatedAt: now,
+		}
+	default:
+		row := f.Rows[existing.ID]
+		row.Quantity += quantity
+		row.UpdatedAt = now
+	}
+	f.mu.Unlock()
+	return f.FindByGoods(ctx, userID, goodsID)
+}
+
+func (f *Cart) SetQuantity(_ context.Context, userID, itemID uint64, quantity uint32) (bool, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	row, ok := f.Rows[itemID]
+	if !ok || row.UserID != userID {
+		return false, nil
+	}
+	row.Quantity, row.UpdatedAt = quantity, f.Now()
+	return true, nil
+}
+
+func (f *Cart) Delete(_ context.Context, userID uint64, itemIDs []uint64) (int, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	n := 0
+	for _, id := range itemIDs {
+		if row, ok := f.Rows[id]; ok && row.UserID == userID {
+			delete(f.Rows, id)
+			n++
+		}
+	}
+	return n, nil
 }

@@ -29,6 +29,8 @@ type GoodsRepository interface {
 	// Create inserts the product and its inventory row in one transaction.
 	Create(ctx context.Context, g *entity.GoodsInfo, initialStock uint32) (uint64, error)
 	FindByID(ctx context.Context, id uint64) (*entity.GoodsInfo, error)
+	// FindByIDs returns the goods that exist (not deleted) among ids.
+	FindByIDs(ctx context.Context, ids []uint64) (map[uint64]*entity.GoodsInfo, error)
 	Update(ctx context.Context, g *entity.GoodsInfo) error
 	SoftDelete(ctx context.Context, id uint64) error
 	SetStatus(ctx context.Context, id uint64, status uint) error

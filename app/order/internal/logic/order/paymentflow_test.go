@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"github.com/hughtaiyaki/goframeshop/utility/eventbus"
 	"sync"
 	"testing"
 	"time"
@@ -365,14 +366,59 @@ func TestPayableOrderSchedulesItsExpiryMessage(t *testing.T) {
 	f.svc.Recover(ctx)
 	f.svc.Recover(ctx)
 	got := f.status(t, o.No)
-	if len(f.orders.events) != 1 {
-		t.Fatalf("%d events, want exactly one for one PENDING_PAYMENT change", len(f.orders.events))
+	// One PENDING_PAYMENT change: its expiry message and order.placed.
+	if len(f.orders.events) != 2 {
+		t.Fatalf("%d events, want exactly two for one PENDING_PAYMENT change", len(f.orders.events))
 	}
 	e := f.orders.events[0]
 	payload := e.Payload.(service.PaymentPending)
 	if e.Type != service.EventPaymentPending || e.AggregateID != o.No || payload.OrderNo != o.No ||
 		!payload.ExpiresAt.Equal(*got.ExpiresAt) || !e.DeliverAt.Equal(got.ExpiresAt.Add(service.ExpiryGrace)) {
 		t.Fatalf("event %+v for order %+v", e, got)
+	}
+}
+
+func TestPlacedOrderAnnouncesItsGoods(t *testing.T) {
+	ctx := context.Background()
+	f := newFixture()
+	in := input("r1")
+	in.FromCart = true
+	o, err := f.svc.Create(ctx, alice, in)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var placed []eventbus.Event
+	for _, e := range f.orders.events {
+		if e.Type == eventbus.TypeOrderPlaced {
+			placed = append(placed, e)
+		}
+	}
+	if len(placed) != 1 || placed[0].AggregateID != o.No || placed[0].DeliverAt != nil {
+		t.Fatalf("order.placed events: %+v", placed)
+	}
+	payload := placed[0].Payload.(eventbus.OrderPlaced)
+	// Merged quantities, the shopper, and the submit time (= created_at).
+	want := map[uint64]uint32{1: 1, 2: 3}
+	if payload.OrderNo != o.No || payload.UserID != alice || !payload.FromCart ||
+		!payload.PlacedAt.Equal(o.CreatedAt) || len(payload.Items) != len(want) {
+		t.Fatalf("payload %+v for order %+v", payload, o)
+	}
+	for _, item := range payload.Items {
+		if want[item.GoodsID] != item.Quantity {
+			t.Fatalf("items %+v, want %v", payload.Items, want)
+		}
+	}
+}
+
+func TestOrderWithoutStockIsNeverPlaced(t *testing.T) {
+	ctx := context.Background()
+	f := newFixture()
+	f.inventory.reserves = []reply{{outcome: service.OutcomeInsufficientStock}}
+	in := input("r1")
+	in.FromCart = true
+	o, _ := f.svc.Create(ctx, alice, in)
+	if got := f.status(t, o.No); got.Status != service.StatusClosed || len(f.orders.events) != 0 {
+		t.Fatalf("status %s, events %+v", got.Status, f.orders.events)
 	}
 }
 

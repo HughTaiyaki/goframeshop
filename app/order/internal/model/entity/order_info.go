@@ -22,6 +22,7 @@ type OrderInfo struct {
 	ConsigneePhone   string      `json:"consigneePhone"   orm:"consignee_phone"   description:""`                                                 //
 	ConsigneeAddress string      `json:"consigneeAddress" orm:"consignee_address" description:""`                                                 //
 	Remark           string      `json:"remark"           orm:"remark"            description:""`                                                 //
+	FromCart         uint        `json:"fromCart"         orm:"from_cart"         description:"1: checked out from the cart"`                     // 1: checked out from the cart
 	ReserveDeadline  *gtime.Time `json:"reserveDeadline"  orm:"reserve_deadline"  description:""`                                                 //
 	ExpiresAt        *gtime.Time `json:"expiresAt"        orm:"expires_at"        description:""`                                                 //
 	ClosedAt         *gtime.Time `json:"closedAt"         orm:"closed_at"         description:""`                                                 //

@@ -1,6 +1,6 @@
 # goods 商品服务开发
 
-`app/goods` 负责商品、商品图片、三级分类、库存账本和上下架。它是一个 gRPC 服务，监听 `:31005`，使用 `goods` 库，前面有一层 Redis 缓存。任务、决定和验收见 [`tasks/0007-goods-service-and-cache.md`](../../tasks/0007-goods-service-and-cache.md)。
+`app/goods` 负责商品、商品图片、三级分类、库存账本、上下架和购物车。它是一个 gRPC 服务，监听 `:31005`，使用 `goods` 库，前面有一层 Redis 缓存。任务、决定和验收见 [`tasks/0007-goods-service-and-cache.md`](../../tasks/0007-goods-service-and-cache.md)。
 
 ## 1. 谁能做什么
 
@@ -9,8 +9,9 @@
 | 商品列表、详情、分类列表、分类树 | 公开，只能看到上架商品 | 需要管理员令牌，也能看到下架商品和已预留数量 | `publicMethods` |
 | 新增、修改、删除商品，挂图、删图，分类增删改，上下架，调整库存 | 不存在 | 需要管理员令牌 | 默认拒绝，只认管理员公钥 |
 | 库存预留、提交、释放、查询 | 不存在 | 不存在（用 `scripts/inventory` 调用） | 管理员令牌，或订单服务的服务令牌（`jwtOrder` 公钥，见 [order-service.md](order-service.md#5-服务身份第三对密钥)） |
+| 购物车 | 需要登录，只能操作自己的 | 不存在 | 只接受商城用户令牌（`jwtUser` 公钥），管理员和服务令牌返回 PermissionDenied |
 
-goods 服务配置的是**管理员**公钥。商城用户访问读接口时，网关会转发他们的令牌，但读接口是公开的，令牌验不过也不影响。
+goods 服务的 `jwt` 一节配置的是**管理员**公钥。商城用户访问读接口时，网关会转发他们的令牌，但读接口是公开的，令牌验不过也不影响。
 
 ## 2. 结构
 
@@ -149,4 +150,22 @@ GOFRAMESHOP_IT=1 go test ./app/goods/internal/repository/ -run Integration -v   
 - gRPC：`ListGoodsRequest.hot_only`。仓库层是 `service.GoodsFilter{CategoryID, Shelf, HotOnly}`，热门时 `WHERE sort > 0 ORDER BY sort DESC, id DESC`，用索引 `idx_goods_hot (status, sort)`。
 - 普通列表的顺序不变（新的在前）。热门列表和普通列表一样**不缓存**；详情缓存里带着 `sort`，修改商品后照常删除。
 - search 不使用权重：`docQuery` 按列名查询，新增列不影响它。
+
+## 9. 购物车
+
+任务见 [`tasks/0016-cart.md`](../../tasks/0016-cart.md)。
+
+| HTTP（gateway-h5，需要登录） | gRPC（`cart/v1.CartService`） | 规则 |
+| --- | --- | --- |
+| `GET /frontend/cart?page=&size=` | `ListCartItems` | 最新加入的在前；每行带商品当前的名称、价格、封面、可用库存、`available` |
+| `POST /frontend/cart` `{goodsId, quantity}` | `AddCartItem` | 只能加购上架商品；已有时数量累加；累加后超过 99 返回 `code:9`，数量不变；每人最多 100 行 |
+| `PUT /frontend/cart` `{cartItemId, quantity}` | `UpdateCartItem` | 数量 1–99；不是自己的返回 `code:5` |
+| `DELETE /frontend/cart` `{cartItemIds:[...]}` | `DeleteCartItems` | 最多 100 个；不是自己的跳过；返回实际删除行数 |
+
+- **身份**：goods 的 `jwtUser` 一节配置商城用户公钥，`cartMethods` 只允许 `RoleUser`。请求里没有用户 ID，`utility.UserIDFromContext` 是唯一来源；每条 UPDATE、DELETE 都带 `user_id` 条件。
+- **加购是一条语句**：`INSERT ... AS new ON DUPLICATE KEY UPDATE`，靠 `(user_id, goods_id)` 唯一键，并发加购也只有一行。超过上限时两列都保持原值，影响行数为 0，返回 `ErrCartLimit`。注意赋值顺序：MySQL 从左到右执行，`updated_at` 必须写在 `quantity` 前面，判断时用的才是旧数量。
+- **只存商品和数量**：名称、价格、库存每次列表时批量查（商品、封面、库存各一次查询），所以总是当前值。下单时订单服务会重新计价。
+- **下架或删除的商品**留在购物车里，`available=false`，方便顾客自己删除；已删除的商品没有名称和价格。
+- **下单后移除**：前端从购物车结算时下单带 `fromCart: true`。订单库存预留成功后，order 写入 `order.placed`，goods 的 `events.Cart` 消费，见 [events.md](events.md#53-下单成功orderplaced)。
+- **时间精度**：`created_at`、`updated_at` 由服务写入，先截断到毫秒（列是 `DATETIME(3)`），避免 MySQL 四舍五入后比实际时间晚，影响和下单时间的比较。
 

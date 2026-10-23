@@ -149,6 +149,7 @@ type Order struct {
 	ConsigneePhone   string
 	ConsigneeAddress string
 	Remark           string
+	FromCart         bool
 	ReserveDeadline  time.Time
 	ExpiresAt        *time.Time
 	PaidAt           *time.Time
@@ -215,6 +216,8 @@ type CreateInput struct {
 	Items       []ItemInput
 	ConsigneeID uint64
 	Remark      string
+	// FromCart is copied into order.placed; it does not change the order.
+	FromCart bool
 }
 
 // ListFilter selects orders. UserID 0 means everyone (administrators only).

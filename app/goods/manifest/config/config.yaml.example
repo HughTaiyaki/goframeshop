@@ -41,8 +41,17 @@ jwtOrder:
   publicKey: ""
   issuer: "goframeshop-order"
 
+# The SHOP USER public key (the same one gateway-h5 and the user service
+# use), for the cart: shoppers reach only their own cart, with their own
+# token. Remove this section and the cart is unavailable. May also come from
+# JWTUSER_PUBLIC_KEY.
+jwtUser:
+  publicKey: ""
+  issuer: "goframeshop-user"
+
 # Events (design §8): catalogue writes record goods.changed in the outbox,
-# and the relay publishes them. May also come from RABBITMQ_URL.
+# and the relay publishes them; order.placed is consumed to take ordered goods
+# out of the cart. May also come from RABBITMQ_URL.
 rabbitmq:
   url: "amqp://shop:change-me@127.0.0.1:5672/"
 outbox:

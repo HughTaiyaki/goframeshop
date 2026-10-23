@@ -41,7 +41,9 @@ func (r *orderRepository) Create(ctx context.Context, o *service.Order) (uint64,
 			ConsigneePhone:   o.ConsigneePhone,
 			ConsigneeAddress: o.ConsigneeAddress,
 			Remark:           o.Remark,
+			FromCart:         o.FromCart,
 			ReserveDeadline:  gtime.New(o.ReserveDeadline),
+			CreatedAt:        createdAt(o.CreatedAt),
 		}).InsertAndGetId()
 		if err != nil {
 			return err
@@ -171,6 +173,16 @@ func (r *orderRepository) Transition(ctx context.Context, orderID uint64, c serv
 	return changed, err
 }
 
+// createdAt keeps the service's own clock when it set one: order.placed
+// carries the same instant, and the cart compares its rows against it.
+// Unset (nil) leaves it to GoFrame, which fills in now.
+func createdAt(t time.Time) *gtime.Time {
+	if t.IsZero() {
+		return nil
+	}
+	return gtime.New(t)
+}
+
 func transition(ctx context.Context, model *gdb.Model, orderID uint64, from []string, data gdb.Map) (bool, error) {
 	result, err := model.Data(data).
 		Where(dao.OrderInfo.Columns().Id, orderID).
@@ -274,6 +286,7 @@ func toOrder(row *entity.OrderInfo) *service.Order {
 		ConsigneePhone:   row.ConsigneePhone,
 		ConsigneeAddress: row.ConsigneeAddress,
 		Remark:           row.Remark,
+		FromCart:         row.FromCart == 1,
 	}
 	if row.ReserveDeadline != nil {
 		o.ReserveDeadline = row.ReserveDeadline.Time

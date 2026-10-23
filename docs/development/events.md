@@ -96,6 +96,8 @@ order ──order.payment_pending──▶ order.expiry.delay（没人消费，�
                                  order.expiry ──▶ order 服务：到期关单
 
 goods ──goods.changed──────────▶ banner.goods-changed ──▶ banner 服务：更新手工位
+
+order ──order.placed───────────▶ goods.cart-order-placed ──▶ goods 服务：从购物车移除已购商品
 ```
 
 ### 5.1 订单到期：`order.payment_pending`
@@ -138,6 +140,25 @@ WHERE goods_id=? AND goods_version < ?     -- 旧事件晚到，不会覆盖新�
 
 这修复了任务 0011 留下的已知局限（手工位复制的商品名不会跟着改）。
 
+### 5.3 下单成功：`order.placed`
+
+订单库存预留成功、进入"待支付"时，和 `order.payment_pending` 写在同一个事务里（同一次状态变更）。内容：订单号、用户、下单时间 `placedAt`（等于订单的 `created_at`）、`fromCart`、商品和合并后的数量。库存不足或下单失败的订单不会进入"待支付"，也就不会发这个事件。
+
+goods 收到后（Inbox 事务内）：
+
+```sql
+-- 只处理 fromCart = true 的订单；对每个商品：
+UPDATE cart_item SET quantity = quantity - ?, updated_at = updated_at   -- 减去已购数量
+ WHERE user_id = ? AND goods_id = ? AND updated_at <= placedAt AND quantity > ?
+DELETE FROM cart_item                                                    -- 不够减的整行删除
+ WHERE user_id = ? AND goods_id = ? AND updated_at <= placedAt AND quantity <= ?
+```
+
+- **事件是事实，不是命令**："这个订单在 `placedAt` 下单了"。下单之后顾客又改过的行（`updated_at > placedAt`）代表新的意图，不动它。
+- `updated_at = updated_at` 是故意的：不写的话 `ON UPDATE CURRENT_TIMESTAMP` 会把它改成现在，下一个更早下单的事件就找不到这一行了。
+- "立即购买"（`fromCart = false`）的订单也会发事件，goods 直接 ACK，不改购物车。以后别的消费者（比如优惠券、统计）也可以订阅它。
+- 订单取消或超时关闭时不会把商品放回购物车。
+
 ## 6. 本地运行
 
 ```bash
@@ -164,6 +185,7 @@ outbox:
 | RabbitMQ 挂了 | `docker compose stop rabbitmq` 后下单 | 下单照常成功；`orders.outbox_event` 里事件是 PENDING，`attempts` 在涨；order 日志 `outbox event ... attempt N failed` |
 | RabbitMQ 恢复 | `docker compose start rabbitmq` | 几秒到一分钟内补发（看退避到哪一步）；两个消费者日志 `consumer ...: connected` |
 | 手工位跟随商品 | 后台给手工位上的商品改名、下架 | 前台 `/frontend/position` 名字跟着变、手工位消失；banner 日志 `goods N changed ... slot(s) updated` |
+| 下单后清购物车 | 加购后带 `fromCart: true` 下单 | 订单进入待支付后，购物车里对应数量减少；goods 日志 `order ... placed from the cart: N cart row(s) reduced or removed` |
 | 看积压 | 管理界面 Queues | `order.expiry.delay` 里是还没到期的订单 |
 
 ## 7. 代码在哪

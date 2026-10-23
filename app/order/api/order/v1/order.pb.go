@@ -153,7 +153,10 @@ type CreateOrderRequest struct {
 	// v:min:1
 	ConsigneeId uint64 `protobuf:"varint,3,opt,name=consignee_id,json=consigneeId,proto3" json:"consignee_id,omitempty" dc:"One of the shopper's own addresses." v:"min:1"`
 	// v:length:0,255
-	Remark        string `protobuf:"bytes,4,opt,name=remark,proto3" json:"remark,omitempty" v:"length:0,255"`
+	Remark string `protobuf:"bytes,4,opt,name=remark,proto3" json:"remark,omitempty" v:"length:0,255"`
+	// The shopper checked out from the cart: once the order is placed, the
+	// goods service takes the bought quantities out of the cart.
+	FromCart      bool `protobuf:"varint,5,opt,name=from_cart,json=fromCart,proto3" json:"from_cart,omitempty" dc:"The shopper checked out from the cart: once the order is placed, thegoods service takes the bought quantities out of the cart."`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -214,6 +217,13 @@ func (x *CreateOrderRequest) GetRemark() string {
 		return x.Remark
 	}
 	return ""
+}
+
+func (x *CreateOrderRequest) GetFromCart() bool {
+	if x != nil {
+		return x.FromCart
+	}
+	return false
 }
 
 type CancelOrderRequest struct {
@@ -864,13 +874,14 @@ const file_order_v1_order_proto_rawDesc = "" +
 	"\x14order/v1/order.proto\x12\border.v1\x1a\x1fgoogle/protobuf/timestamp.proto\"G\n" +
 	"\x0eOrderItemInput\x12\x19\n" +
 	"\bgoods_id\x18\x01 \x01(\x04R\agoodsId\x12\x1a\n" +
-	"\bquantity\x18\x02 \x01(\rR\bquantity\"\x9e\x01\n" +
+	"\bquantity\x18\x02 \x01(\rR\bquantity\"\xbb\x01\n" +
 	"\x12CreateOrderRequest\x12\x1d\n" +
 	"\n" +
 	"request_id\x18\x01 \x01(\tR\trequestId\x12.\n" +
 	"\x05items\x18\x02 \x03(\v2\x18.order.v1.OrderItemInputR\x05items\x12!\n" +
 	"\fconsignee_id\x18\x03 \x01(\x04R\vconsigneeId\x12\x16\n" +
-	"\x06remark\x18\x04 \x01(\tR\x06remark\"/\n" +
+	"\x06remark\x18\x04 \x01(\tR\x06remark\x12\x1b\n" +
+	"\tfrom_cart\x18\x05 \x01(\bR\bfromCart\"/\n" +
 	"\x12CancelOrderRequest\x12\x19\n" +
 	"\border_no\x18\x01 \x01(\tR\aorderNo\".\n" +
 	"\x11GetMyOrderRequest\x12\x19\n" +

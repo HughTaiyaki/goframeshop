@@ -9,7 +9,9 @@ import (
 )
 
 func (c *ControllerV1) OrderCreate(ctx context.Context, req *v1.OrderCreateReq) (res *v1.OrderCreateRes, err error) {
-	grpcReq := &orderv1.CreateOrderRequest{RequestId: req.RequestId, ConsigneeId: req.ConsigneeId, Remark: req.Remark}
+	grpcReq := &orderv1.CreateOrderRequest{
+		RequestId: req.RequestId, ConsigneeId: req.ConsigneeId, Remark: req.Remark, FromCart: req.FromCart,
+	}
 	for _, item := range req.Items {
 		grpcReq.Items = append(grpcReq.Items, &orderv1.OrderItemInput{GoodsId: item.GoodsId, Quantity: item.Quantity})
 	}

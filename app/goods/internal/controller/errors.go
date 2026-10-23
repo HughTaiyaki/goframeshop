@@ -39,6 +39,8 @@ func StatusError(err error) error {
 		return status.Error(codes.FailedPrecondition, "resource is still in use")
 	case errors.Is(err, service.ErrInsufficientStock):
 		return status.Error(codes.FailedPrecondition, "not enough available stock")
+	case errors.Is(err, service.ErrCartLimit):
+		return status.Error(codes.FailedPrecondition, "cart limit reached")
 	case errors.Is(err, service.ErrIdempotencyConflict):
 		return status.Error(codes.AlreadyExists, "operation id reused with different parameters")
 	default:

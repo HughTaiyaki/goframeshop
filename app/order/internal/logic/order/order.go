@@ -95,6 +95,7 @@ func (s *sOrder) Create(ctx context.Context, userID uint64, in *service.CreateIn
 		RequestHash: hash,
 		Status:      service.StatusReserving,
 		Remark:      remark,
+		FromCart:    in.FromCart,
 	}
 	for _, item := range items {
 		goods, err := s.catalog.Goods(ctx, item.GoodsID)
@@ -130,6 +131,7 @@ func (s *sOrder) Create(ctx context.Context, userID uint64, in *service.CreateIn
 	order.ConsigneeName, order.ConsigneePhone, order.ConsigneeAddress = address.Name, address.Phone, address.Address
 
 	now := s.now()
+	order.CreatedAt = now
 	order.ReserveDeadline = now.Add(s.timing.ReserveTimeout)
 	order.No = newOrderNo(now)
 	order.ID, err = s.orders.Create(ctx, order)
@@ -147,6 +149,25 @@ func (s *sOrder) Create(ctx context.Context, userID uint64, in *service.CreateIn
 
 	s.reserve(ctx, order)
 	return s.orders.FindByNo(ctx, order.No)
+}
+
+// placedEvent is the order.placed event of an order whose stock was reserved.
+func placedEvent(order *service.Order) eventbus.Event {
+	items := make([]eventbus.OrderPlacedItem, 0, len(order.Items))
+	for _, item := range order.Items {
+		items = append(items, eventbus.OrderPlacedItem{GoodsID: item.GoodsID, Quantity: item.Quantity})
+	}
+	return eventbus.Event{
+		Type:        eventbus.TypeOrderPlaced,
+		AggregateID: order.No,
+		Payload: eventbus.OrderPlaced{
+			OrderNo:  order.No,
+			UserID:   order.UserID,
+			PlacedAt: order.CreatedAt,
+			FromCart: order.FromCart,
+			Items:    items,
+		},
+	}
 }
 
 func sameRequest(existing *service.Order, hash string) (*service.Order, error) {
@@ -179,7 +200,7 @@ func (s *sOrder) reserve(ctx context.Context, order *service.Order) {
 				AggregateID: order.No,
 				Payload:     service.PaymentPending{OrderNo: order.No, ExpiresAt: expires},
 				DeliverAt:   &wake,
-			}},
+			}, placedEvent(order)},
 		})
 	case service.OutcomeInsufficientStock, service.OutcomeGoodsUnavailable:
 		// Nothing was reserved, so there is nothing to release.

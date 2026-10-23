@@ -1,0 +1,86 @@
+syntax = "proto3";
+
+package cart.v1;
+
+option go_package = "github.com/hughtaiyaki/goframeshop/app/goods/api/cart/v1";
+
+import "google/protobuf/timestamp.proto";
+
+// CartService is the shopper's own cart. Every method needs a shop user
+// token and acts on the cart of the user it names: there is no user id in
+// any request. Another shopper's cart item is NotFound.
+//
+// The cart is a list of intentions, not a price quote: the price shown is
+// the goods' current price, and the order service prices the order again.
+service CartService {
+  rpc ListCartItems(ListCartItemsRequest) returns (ListCartItemsResponse);
+  // AddCartItem adds to the quantity when the goods is already in the cart.
+  // Only goods on shelf can be added.
+  rpc AddCartItem(AddCartItemRequest) returns (CartItemResponse);
+  // UpdateCartItem sets the quantity of one row.
+  rpc UpdateCartItem(UpdateCartItemRequest) returns (CartItemResponse);
+  // DeleteCartItems removes the caller's rows among the given ids. Ids that
+  // are not the caller's (or no longer exist) are skipped.
+  rpc DeleteCartItems(DeleteCartItemsRequest) returns (DeleteCartItemsResponse);
+}
+
+message ListCartItemsRequest {
+  // v:min:1
+  uint32 page = 1;
+  // v:between:1,100
+  uint32 size = 2;
+}
+
+// Newest first (by when the goods was first added).
+message ListCartItemsResponse {
+  repeated CartItem items = 1;
+  uint32 page = 2;
+  uint32 size = 3;
+  uint64 total = 4;
+}
+
+// One row with the goods as it is now. A goods taken off shelf or deleted
+// stays in the cart with available = false, so the shopper can see and
+// remove it; its name and price are then empty and 0 if it was deleted.
+message CartItem {
+  uint64 cart_item_id = 1;
+  uint64 goods_id = 2;
+  uint32 quantity = 3;
+  string goods_name = 4;
+  uint64 price_cents = 5;
+  string cover_url = 6;
+  // Whether it can be ordered now (on shelf and not deleted).
+  bool available = 7;
+  // Available stock right now; ordering more than this will fail.
+  uint32 stock = 8;
+  google.protobuf.Timestamp created_at = 9;
+  google.protobuf.Timestamp updated_at = 10;
+}
+
+message AddCartItemRequest {
+  // v:min:1
+  uint64 goods_id = 1;
+  // Added to what is already in the cart; the result may not exceed 99.
+  // v:between:1,99
+  uint32 quantity = 2;
+}
+
+message UpdateCartItemRequest {
+  // v:min:1
+  uint64 cart_item_id = 1;
+  // v:between:1,99
+  uint32 quantity = 2;
+}
+
+message CartItemResponse {
+  CartItem item = 1;
+}
+
+message DeleteCartItemsRequest {
+  // v:required
+  repeated uint64 cart_item_ids = 1;
+}
+
+message DeleteCartItemsResponse {
+  uint32 deleted = 1;
+}

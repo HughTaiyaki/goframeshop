@@ -6,7 +6,7 @@
 
 ## 当前阶段
 
-已完成：本地基础设施、用户服务、interaction 服务、H5 网关、Ed25519 JWT 鉴权，后台的 admin、file 服务和 gateway-admin 图片上传，带 Redis 缓存的 goods 商品服务、库存预留与上下架，Elasticsearch 搜索服务，order 订单服务，banner 服务，支付模拟器与订单支付，RabbitMQ 事件（Outbox / Inbox），链路追踪，以及前台改资料、改密码和热门推荐（任务 0001–0015）。下一步见 `docs/index.md` 的"下一阶段"。
+已完成：本地基础设施、用户服务、interaction 服务、H5 网关、Ed25519 JWT 鉴权，后台的 admin、file 服务和 gateway-admin 图片上传，带 Redis 缓存的 goods 商品服务、库存预留与上下架，Elasticsearch 搜索服务，order 订单服务，banner 服务，支付模拟器与订单支付，RabbitMQ 事件（Outbox / Inbox），链路追踪，前台改资料、改密码和热门推荐，以及购物车（任务 0001–0016）。下一步见 `docs/index.md` 的"下一阶段"。
 
 在验收测试存在并通过之前，不得声称结算、支付、导购推荐或故障诊断已经实现。
 
@@ -67,6 +67,7 @@ GOFRAMESHOP_IT=1 go test ./app/goods/internal/repository/ ./app/search/internal/
 - 返回有意义的 gRPC 状态码，不泄露数据库内部错误。
 - 禁止记录密码、令牌、支付数据、密保答案和原始提示词。
 - 新增 gRPC 方法和 HTTP 路由默认需要登录。只有确实公开的接口才能加入对应服务 `internal/cmd/cmd.go` 的 `publicMethods`，以及 `app/gateway-h5/internal/cmd/cmd.go` 的 `publicRoutes`，并补测试。
+- protobuf 注释和 HTTP 结构体里，列表字段不要用 `length`、`between` 校验规则：GoFrame 会把列表当成 JSON 文本量长度。数量上限放在逻辑层检查。
 - 只有 `app/user`（商城用户）、`app/admin`（管理员）和 `app/order`（服务身份）可以持有 JWT 私钥，三者必须是**不同的**密钥对；其他进程只能配置对应的公钥。支付回调的签名私钥是第四对，只放在 `app/paysim`。
 - 支付模拟器代表外部系统：订单服务只能通过它的 gRPC 接口打交道，不能读写 `paysim` 库。支付回调只当提示，必须验签后再查询模拟器，以查询结果为准。
 - 一个服务接受多种身份时，用 `utility.AuthPolicy` 为每个接口列出允许的角色；未列出的接口默认拒绝。

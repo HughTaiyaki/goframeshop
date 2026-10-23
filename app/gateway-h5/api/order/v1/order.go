@@ -16,6 +16,7 @@ type OrderCreateReq struct {
 	Items       []*OrderItemInput `json:"items"       v:"required"             dc:"商品与数量，最多 20 种"`
 	ConsigneeId uint64            `json:"consigneeId" v:"required|min:1"       dc:"自己的收货地址 ID"`
 	Remark      string            `json:"remark"      v:"length:0,255"         dc:"备注"`
+	FromCart    bool              `json:"fromCart"                             dc:"从购物车结算时填 true：下单成功（库存预留成功）后，购物车里对应的数量会被减去"`
 }
 
 type OrderCreateRes struct {

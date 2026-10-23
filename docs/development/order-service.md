@@ -10,7 +10,7 @@
 
 ```text
 浏览器 ──POST /frontend/order──▶ gateway-h5 ──CreateOrder──▶ order 服务
-        { requestId, items:[{goodsId, quantity}], consigneeId, remark }
+        { requestId, items:[{goodsId, quantity}], consigneeId, remark, fromCart }
 ```
 
 order 服务依次做这些事：
@@ -27,7 +27,7 @@ order 服务依次做这些事：
 
 | 预留结果 | 订单变成 | 说明 |
 | --- | --- | --- |
-| 成功 | `PENDING_PAYMENT`（待支付），`expiresAt` = 现在 + 15 分钟 | 库存已经为这个订单留好 |
+| 成功 | `PENDING_PAYMENT`（待支付），`expiresAt` = 现在 + 15 分钟 | 库存已经为这个订单留好；同一个事务写入 `order.payment_pending`（到期关单）和 `order.placed`（`fromCart` 时 goods 会从购物车移除已购商品，见 [events.md](events.md#53-下单成功orderplaced)） |
 | 库存不足 / 商品已下架 | `CLOSED`（已关闭），原因写在 `closeReason` | 没有预留到任何库存，所以不需要释放 |
 | 订单已被取消（预留请求慢了一步） | `CLOSING` → 释放 → `CLOSED` | 详见第 3 节 |
 | **超时或 goods 不可用，结果未知** | **保持 `RESERVING`** | 不知道到底预留没有，就不能乱改状态；后台任务会用**同一个操作号**再问一次 |
