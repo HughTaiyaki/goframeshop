@@ -1,0 +1,48 @@
+# Local development template. Copy this file to config.yaml before startup.
+#
+# The payment simulator stands in for an external payment provider. It keeps
+# its own database (paysim) and is reached only through its API:
+#   gRPC :31009   merchant API (create / close / query / refund), order service only
+#   HTTP :8399    the payer's checkout page (the pay_url)
+grpc:
+  name: "paysim"
+  address: ":31009"
+
+logger:
+  level: "all"
+  stdout: true
+
+database:
+  default:
+    link: "mysql:shop:change-me@tcp(127.0.0.1:3306)/paysim?loc=Local&parseTime=true"
+
+etcd:
+  address: "127.0.0.1:2379"
+
+# The merchant: the order service's service token. The PUBLIC key of the
+# order service's own pair (the same value as jwtOrder in the goods config).
+# May also come from JWTORDER_PUBLIC_KEY.
+jwtOrder:
+  publicKey: ""
+  issuer: "goframeshop-order"
+
+# Notifications to the merchant. privateKey is the simulator's OWN pair (a
+# fourth one, from `make jwt-keys`); its public half goes into the order
+# config as paysim.publicKey. May also come from NOTIFY_PRIVATE_KEY.
+notify:
+  privateKey: ""
+  url: "http://127.0.0.1:8199/frontend/payment/notify"   # through gateway-h5
+  interval: "1s"      # how often due notifications are sent
+  maxAttempts: 10     # then give up; the merchant finds out by querying
+
+checkout:
+  address: ":8399"
+  baseURL: "http://127.0.0.1:8399"   # how the payer reaches it; used in pay_url
+
+# Tracing (design §9): spans go to the OpenTelemetry Collector, which
+# forwards them to Jaeger (UI: http://127.0.0.1:16686). Leave endpoint empty
+# to turn tracing off. May also come from OTEL_ENDPOINT.
+otel:
+  endpoint: "127.0.0.1:4317"
+  sampleRatio: 1.0          # 1 = every trace (a lab); lower it under real load
+  environment: "local"

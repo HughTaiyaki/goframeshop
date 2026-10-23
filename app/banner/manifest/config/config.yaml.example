@@ -1,0 +1,36 @@
+# Local development template. Copy this file to config.yaml before startup.
+grpc:
+  name: "banner"
+  address: ":31008"   # the tutorial's :31006 is taken by the search service
+
+logger:
+  level: "all"
+  stdout: true
+
+database:
+  default:
+    link: "mysql:shop:change-me@tcp(127.0.0.1:3306)/banner?loc=Local&parseTime=true"
+
+etcd:
+  address: "127.0.0.1:2379"
+
+# Writes need an ADMINISTRATOR token: the admin key pair's public key (the
+# same one gateway-admin, file and goods use). The token is also forwarded
+# to the file and goods services to check images and goods.
+# May also come from JWT_PUBLIC_KEY.
+jwt:
+  publicKey: ""
+  issuer: "goframeshop-admin"
+
+# goods.changed events keep the hand-picked slots up to date (design §8).
+# May also come from RABBITMQ_URL.
+rabbitmq:
+  url: "amqp://shop:change-me@127.0.0.1:5672/"
+
+# Tracing (design §9): spans go to the OpenTelemetry Collector, which
+# forwards them to Jaeger (UI: http://127.0.0.1:16686). Leave endpoint empty
+# to turn tracing off. May also come from OTEL_ENDPOINT.
+otel:
+  endpoint: "127.0.0.1:4317"
+  sampleRatio: 1.0          # 1 = every trace (a lab); lower it under real load
+  environment: "local"

@@ -1,0 +1,34 @@
+# Local development template for the H5 gateway.
+# Copy it to config.yaml before starting the service.
+# https://goframe.org/docs/web/server-config-file-template
+server:
+  address:     ":8199"
+  openapiPath: "/api.json"
+  swaggerPath: "/swagger"
+
+# https://goframe.org/docs/core/glog-config
+logger:
+  level : "all"
+  stdout: true
+
+# Service discovery. The gateway resolves the "user" and "interaction"
+# services through etcd.
+etcd:
+  address: "127.0.0.1:2379"
+
+# The gateway holds no database of its own: every read and write is a gRPC call.
+
+# Token verification. The gateway only holds the PUBLIC key from
+# `make jwt-keys`; it rejects bad tokens early but can never issue one.
+# Leave it empty and export JWT_PUBLIC_KEY instead if you prefer.
+jwt:
+  publicKey: ""
+  issuer: "goframeshop-user"
+
+# Tracing (design §9): spans go to the OpenTelemetry Collector, which
+# forwards them to Jaeger (UI: http://127.0.0.1:16686). Leave endpoint empty
+# to turn tracing off. May also come from OTEL_ENDPOINT.
+otel:
+  endpoint: "127.0.0.1:4317"
+  sampleRatio: 1.0          # 1 = every trace (a lab); lower it under real load
+  environment: "local"

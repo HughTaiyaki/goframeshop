@@ -1,0 +1,89 @@
+syntax = "proto3";
+
+package position.v1;
+
+option go_package = "github.com/hughtaiyaki/goframeshop/app/banner/api/position/v1";
+
+import "google/protobuf/timestamp.proto";
+
+// PositionService manages hand-picked goods slots on the home page.
+// Listing is public; every write needs an administrator token. The goods
+// name is read from the goods service, never typed in.
+service PositionService {
+  rpc ListPositions(ListPositionsRequest) returns (ListPositionsResponse);
+  rpc CreatePosition(CreatePositionRequest) returns (CreatePositionResponse);
+  rpc UpdatePosition(UpdatePositionRequest) returns (UpdatePositionResponse);
+  rpc DeletePosition(DeletePositionRequest) returns (DeletePositionResponse);
+}
+
+message ListPositionsRequest {
+  // v:min:1
+  uint32 page = 1;
+  // v:between:1,50
+  uint32 size = 2;
+  // Leave out slots whose goods is off shelf or deleted (the shop's home
+  // page). The back office lists everything and shows goods_on_shelf.
+  bool available_only = 3;
+}
+
+// Ordered by sort ascending, then id.
+message ListPositionsResponse {
+  repeated Position items = 1;
+  uint32 page = 2;
+  uint32 size = 3;
+  uint64 total = 4;
+}
+
+message Position {
+  uint64 position_id = 1;
+  uint64 file_id = 2;
+  string pic_url = 3;
+  uint64 goods_id = 4;
+  // Copied from the goods service when the slot was saved, and kept up to
+  // date by goods.changed events.
+  string goods_name = 5;
+  // Empty means "open the goods page".
+  string link = 6;
+  uint32 sort = 7;
+  google.protobuf.Timestamp created_at = 8;
+  google.protobuf.Timestamp updated_at = 9;
+  // False once the goods went off shelf or was deleted (from goods.changed).
+  bool goods_on_shelf = 10;
+}
+
+message CreatePositionRequest {
+  // v:min:1
+  uint64 file_id = 1;
+  // v:min:1
+  uint64 goods_id = 2;
+  // v:length:0,512
+  string link = 3;
+  // v:between:0,999
+  uint32 sort = 4;
+}
+
+message CreatePositionResponse {
+  uint64 position_id = 1;
+}
+
+message UpdatePositionRequest {
+  // v:min:1
+  uint64 position_id = 1;
+  // v:min:1
+  uint64 file_id = 2;
+  // v:min:1
+  uint64 goods_id = 3;
+  // v:length:0,512
+  string link = 4;
+  // v:between:0,999
+  uint32 sort = 5;
+}
+
+message UpdatePositionResponse {}
+
+message DeletePositionRequest {
+  // v:min:1
+  uint64 position_id = 1;
+}
+
+message DeletePositionResponse {}

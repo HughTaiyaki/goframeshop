@@ -1,0 +1,93 @@
+syntax = "proto3";
+
+package category.v1;
+
+option go_package = "github.com/hughtaiyaki/goframeshop/app/goods/api/category/v1";
+
+import "google/protobuf/timestamp.proto";
+
+// CategoryService manages the three-level category tree. Reading is public;
+// every write needs an administrator token.
+service CategoryService {
+  rpc ListCategories(ListCategoriesRequest) returns (ListCategoriesResponse);
+  // ListAllCategories returns the whole tree as a flat list and is served
+  // from the Redis cache when possible.
+  rpc ListAllCategories(ListAllCategoriesRequest) returns (ListAllCategoriesResponse);
+  rpc CreateCategory(CreateCategoryRequest) returns (CreateCategoryResponse);
+  rpc UpdateCategory(UpdateCategoryRequest) returns (UpdateCategoryResponse);
+  // DeleteCategory fails with FAILED_PRECONDITION while the category still has
+  // child categories or goods.
+  rpc DeleteCategory(DeleteCategoryRequest) returns (DeleteCategoryResponse);
+}
+
+message ListCategoriesRequest {
+  // Direct children of this category; 0 for the top level.
+  uint64 parent_id = 1;
+  // v:min:1
+  uint32 page = 2;
+  // v:between:1,100
+  uint32 size = 3;
+}
+
+// Ordered by sort, then id.
+message ListCategoriesResponse {
+  repeated Category items = 1;
+  uint32 page = 2;
+  uint32 size = 3;
+  uint64 total = 4;
+}
+
+message ListAllCategoriesRequest {}
+
+// Ordered by level, sort, then id. Clients build the tree from parent_id.
+message ListAllCategoriesResponse {
+  repeated Category items = 1;
+}
+
+message Category {
+  uint64 category_id = 1;
+  uint64 parent_id = 2;
+  uint32 level = 3;
+  string name = 4;
+  uint64 icon_file_id = 5;
+  string icon_url = 6;
+  uint32 sort = 7;
+  google.protobuf.Timestamp created_at = 8;
+  google.protobuf.Timestamp updated_at = 9;
+}
+
+// level is not a field: it is the parent's level + 1, at most 3.
+message CreateCategoryRequest {
+  uint64 parent_id = 1;
+  // v:required|length:1,30
+  string name = 2;
+  // 0 for no icon; otherwise a file in the file service.
+  uint64 icon_file_id = 3;
+  // v:between:0,999
+  uint32 sort = 4;
+}
+
+message CreateCategoryResponse {
+  uint64 category_id = 1;
+}
+
+// The parent cannot be changed: moving a subtree would invalidate the
+// category chains already stored on goods.
+message UpdateCategoryRequest {
+  // v:min:1
+  uint64 category_id = 1;
+  // v:required|length:1,30
+  string name = 2;
+  uint64 icon_file_id = 3;
+  // v:between:0,999
+  uint32 sort = 4;
+}
+
+message UpdateCategoryResponse {}
+
+message DeleteCategoryRequest {
+  // v:min:1
+  uint64 category_id = 1;
+}
+
+message DeleteCategoryResponse {}

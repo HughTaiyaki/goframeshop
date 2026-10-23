@@ -1,0 +1,31 @@
+# Local development template. Copy this file to config.yaml before startup.
+grpc:
+  name: "interaction"
+  address: ":31002"
+
+logger:
+  level: "all"
+  stdout: true
+
+database:
+  default:
+    link: "mysql:shop:change-me@tcp(127.0.0.1:3306)/interaction?loc=Local&parseTime=true"
+
+# Service discovery. Leave empty to use the local file registry instead.
+etcd:
+  address: "127.0.0.1:2379"
+
+# Token verification. This service only holds the PUBLIC key from
+# `make jwt-keys`; it can check tokens but never issue them. Leave it empty and
+# export JWT_PUBLIC_KEY instead if you prefer.
+jwt:
+  publicKey: ""
+  issuer: "goframeshop-user"
+
+# Tracing (design §9): spans go to the OpenTelemetry Collector, which
+# forwards them to Jaeger (UI: http://127.0.0.1:16686). Leave endpoint empty
+# to turn tracing off. May also come from OTEL_ENDPOINT.
+otel:
+  endpoint: "127.0.0.1:4317"
+  sampleRatio: 1.0          # 1 = every trace (a lab); lower it under real load
+  environment: "local"

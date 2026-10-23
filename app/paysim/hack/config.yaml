@@ -1,0 +1,13 @@
+# CLI tool, only in development environment.
+# https://goframe.org/docs/cli
+gfcli:
+  gen:
+    dao:
+      - link: "mysql:shop:change-me@tcp(127.0.0.1:3306)/paysim?loc=Local&parseTime=true"
+        descriptionTag: true
+    # No pbentity: database rows are never part of the public API here.
+
+  docker:
+    build: "-a amd64 -s linux -p temp -ew"
+    tagPrefixes:
+      - local/goframeshop-paysim

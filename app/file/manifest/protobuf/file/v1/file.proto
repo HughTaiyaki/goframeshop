@@ -1,0 +1,56 @@
+syntax = "proto3";
+
+package file.v1;
+
+option go_package = "github.com/hughtaiyaki/goframeshop/app/file/api/file/v1";
+
+import "google/protobuf/timestamp.proto";
+
+// FileService records files that a gateway has already put into object
+// storage. It never sees the bytes. Other services refer to a file by file_id
+// instead of copying its URL, so a URL can change in one place.
+//
+// Every RPC needs an administrator token; the uploader id comes from it.
+service FileService {
+  rpc CreateFile(CreateFileRequest) returns (CreateFileResponse);
+  rpc GetFile(GetFileRequest) returns (GetFileResponse);
+}
+
+message CreateFileRequest {
+  // Original file name, kept for display only. It is never used as a path.
+  // v:length:0,255
+  string name = 1;
+  // v:required|in:qiniu,local
+  string storage = 2;
+  // v:required|length:1,255
+  string object_key = 3;
+  // v:required|length:1,512
+  string url = 4;
+  // v:min:1
+  uint64 size = 5;
+  // v:required|length:1,64
+  string content_type = 6;
+}
+
+message CreateFileResponse {
+  uint64 file_id = 1;
+}
+
+message GetFileRequest {
+  // v:min:1
+  uint64 file_id = 1;
+}
+
+message GetFileResponse {
+  File file = 1;
+}
+
+message File {
+  uint64 file_id = 1;
+  uint64 uploader_id = 2;
+  string name = 3;
+  string url = 4;
+  uint64 size = 5;
+  string content_type = 6;
+  google.protobuf.Timestamp created_at = 7;
+}

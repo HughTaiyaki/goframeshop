@@ -1,0 +1,212 @@
+syntax = "proto3";
+
+package goods.v1;
+
+option go_package = "github.com/hughtaiyaki/goframeshop/app/goods/api/goods/v1";
+
+import "google/protobuf/timestamp.proto";
+
+// GoodsService serves the product catalogue. Reading is public and only
+// shows goods that are on shelf; with an administrator token the reads also
+// show goods off shelf. Every write needs an administrator token.
+service GoodsService {
+  rpc ListGoods(ListGoodsRequest) returns (ListGoodsResponse);
+  // GetGoods is served from the Redis cache when possible.
+  rpc GetGoods(GetGoodsRequest) returns (GetGoodsResponse);
+  rpc CreateGoods(CreateGoodsRequest) returns (CreateGoodsResponse);
+  rpc UpdateGoods(UpdateGoodsRequest) returns (UpdateGoodsResponse);
+  rpc DeleteGoods(DeleteGoodsRequest) returns (DeleteGoodsResponse);
+  // AddGoodsImage looks the file up in the file service, so only a file that
+  // really exists can be attached, and its URL is copied in for fast reads.
+  rpc AddGoodsImage(AddGoodsImageRequest) returns (AddGoodsImageResponse);
+  rpc RemoveGoodsImage(RemoveGoodsImageRequest) returns (RemoveGoodsImageResponse);
+  // SetGoodsShelf puts goods on or off shelf. Off-shelf goods disappear from
+  // the public catalogue and cannot be reserved; reservations already made
+  // can still be committed or released.
+  rpc SetGoodsShelf(SetGoodsShelfRequest) returns (SetGoodsShelfResponse);
+  // AdjustStock adds to or removes from the available stock. It never touches
+  // reserved or sold stock, and fails rather than going below zero.
+  rpc AdjustStock(AdjustStockRequest) returns (AdjustStockResponse);
+}
+
+enum ShelfFilter {
+  // Public callers always get ON_SHELF, whatever they ask for.
+  SHELF_FILTER_UNSPECIFIED = 0; // administrators: everything
+  SHELF_FILTER_ON_SHELF = 1;
+  SHELF_FILTER_OFF_SHELF = 2;
+}
+
+message ListGoodsRequest {
+  // 0 for all; otherwise goods under this category at any level.
+  uint64 category_id = 1;
+  // v:min:1
+  uint32 page = 2;
+  // v:between:1,100
+  uint32 size = 3;
+  ShelfFilter shelf = 4;
+  // Only hot goods (sort > 0), ordered by sort descending instead of newest
+  // first. Combines with the category and shelf filters.
+  bool hot_only = 5;
+}
+
+// Newest first, or by sort descending with hot_only. cover_url is the first
+// image by sort order, or empty.
+message ListGoodsResponse {
+  repeated GoodsSummary items = 1;
+  uint32 page = 2;
+  uint32 size = 3;
+  uint64 total = 4;
+}
+
+// stock is the available quantity and sale the sold quantity, both read live
+// from the inventory ledger.
+message GoodsSummary {
+  uint64 goods_id = 1;
+  string name = 2;
+  uint64 price_cents = 3;
+  string brand = 4;
+  uint32 stock = 5;
+  uint32 sale = 6;
+  string tags = 7;
+  string cover_url = 8;
+  bool on_shelf = 9;
+  // Hot weight: 0 not hot, larger first.
+  uint32 sort = 10;
+}
+
+message GetGoodsRequest {
+  // v:min:1
+  uint64 goods_id = 1;
+}
+
+message GetGoodsResponse {
+  Goods goods = 1;
+}
+
+message Goods {
+  uint64 goods_id = 1;
+  string name = 2;
+  // Price in cents (分). Never a float.
+  uint64 price_cents = 3;
+  uint64 level1_category_id = 4;
+  uint64 level2_category_id = 5;
+  uint64 level3_category_id = 6;
+  string brand = 7;
+  uint32 stock = 8;
+  uint32 sale = 9;
+  string tags = 10;
+  string detail_info = 11;
+  repeated GoodsImage images = 12;
+  google.protobuf.Timestamp created_at = 13;
+  google.protobuf.Timestamp updated_at = 14;
+  bool on_shelf = 15;
+  // Held for unpaid orders. Only filled for administrators.
+  uint32 reserved = 16;
+  // Hot weight: 0 not hot, larger first.
+  uint32 sort = 17;
+}
+
+message GoodsImage {
+  uint64 image_id = 1;
+  uint64 file_id = 2;
+  string url = 3;
+  uint32 sort = 4;
+}
+
+// The editable fields. Neither stock nor sale is here: stock changes through
+// AdjustStock and reservations, sale through committed orders.
+message GoodsInput {
+  // v:required|length:1,200
+  string name = 1;
+  // v:min:1
+  uint64 price_cents = 2;
+  // v:min:1
+  uint64 level1_category_id = 3;
+  uint64 level2_category_id = 4;
+  uint64 level3_category_id = 5;
+  // v:length:0,30
+  string brand = 6;
+  reserved 7;
+  reserved "stock";
+  // v:length:0,255
+  string tags = 8;
+  // TEXT holds 65535 bytes; 16000 characters of up to 4 bytes each fit.
+  // v:length:0,16000
+  string detail_info = 9;
+  // Hot weight: 0 (the default, also for older clients) means not hot; any
+  // value above 0 puts the goods in the hot list, larger first.
+  // v:between:0,9999
+  uint32 sort = 10;
+}
+
+// New goods start OFF shelf, so they can be completed (images, stock) before
+// shoppers see them.
+message CreateGoodsRequest {
+  // v:required
+  GoodsInput goods = 1;
+  // v:between:0,1000000
+  uint32 initial_stock = 2;
+}
+
+message CreateGoodsResponse {
+  uint64 goods_id = 1;
+}
+
+// A full replacement of the editable fields.
+message UpdateGoodsRequest {
+  // v:min:1
+  uint64 goods_id = 1;
+  // v:required
+  GoodsInput goods = 2;
+}
+
+message UpdateGoodsResponse {}
+
+message DeleteGoodsRequest {
+  // v:min:1
+  uint64 goods_id = 1;
+}
+
+message DeleteGoodsResponse {}
+
+message AddGoodsImageRequest {
+  // v:min:1
+  uint64 goods_id = 1;
+  // v:min:1
+  uint64 file_id = 2;
+  // v:between:0,999
+  uint32 sort = 3;
+}
+
+message AddGoodsImageResponse {
+  uint64 image_id = 1;
+}
+
+message RemoveGoodsImageRequest {
+  // v:min:1
+  uint64 image_id = 1;
+}
+
+message RemoveGoodsImageResponse {}
+
+message SetGoodsShelfRequest {
+  // v:min:1
+  uint64 goods_id = 1;
+  bool on_shelf = 2;
+}
+
+message SetGoodsShelfResponse {}
+
+message AdjustStockRequest {
+  // v:min:1
+  uint64 goods_id = 1;
+  // Positive to add stock, negative to remove it; never zero.
+  // v:between:-1000000,1000000
+  sint32 delta = 2;
+}
+
+message AdjustStockResponse {
+  uint32 available = 1;
+  uint32 reserved = 2;
+  uint32 sold = 3;
+}

@@ -1,0 +1,57 @@
+# Local development template. Copy this file to config.yaml before startup.
+grpc:
+  name: "goods"
+  address: ":31005"
+
+logger:
+  level: "all"
+  stdout: true
+
+database:
+  default:
+    link: "mysql:shop:change-me@tcp(127.0.0.1:3306)/goods?loc=Local&parseTime=true"
+
+# Read cache. Remove this section to run without a cache. If Redis is
+# configured but down, the service still starts and reads go to MySQL.
+redis:
+  default:
+    address: "127.0.0.1:6379"
+    db: 1                       # keep the goods cache apart from other users
+    pass: "change-me"   # the Compose default; local development only
+    dialTimeout: "1s"
+    readTimeout: "1s"
+    writeTimeout: "1s"
+
+# Service discovery. Leave empty to use the local file registry instead.
+etcd:
+  address: "127.0.0.1:2379"
+
+# Writes need an ADMINISTRATOR token, so this is the admin key pair's public
+# key (the same one gateway-admin and the file service use). Reads are public.
+# Leave it empty and export JWT_PUBLIC_KEY instead if you prefer.
+jwt:
+  publicKey: ""
+  issuer: "goframeshop-admin"
+
+# The ORDER service's public key (the third key pair, held by app/order as
+# jwtService). With it, the order service may call the inventory RPCs with its
+# own service token; nothing else. Remove this section and only
+# administrators can call them. May also come from JWTORDER_PUBLIC_KEY.
+jwtOrder:
+  publicKey: ""
+  issuer: "goframeshop-order"
+
+# Events (design §8): catalogue writes record goods.changed in the outbox,
+# and the relay publishes them. May also come from RABBITMQ_URL.
+rabbitmq:
+  url: "amqp://shop:change-me@127.0.0.1:5672/"
+outbox:
+  interval: "500ms"
+
+# Tracing (design §9): spans go to the OpenTelemetry Collector, which
+# forwards them to Jaeger (UI: http://127.0.0.1:16686). Leave endpoint empty
+# to turn tracing off. May also come from OTEL_ENDPOINT.
+otel:
+  endpoint: "127.0.0.1:4317"
+  sampleRatio: 1.0          # 1 = every trace (a lab); lower it under real load
+  environment: "local"

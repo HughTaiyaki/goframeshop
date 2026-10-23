@@ -1,0 +1,133 @@
+syntax = "proto3";
+
+package order.v1;
+
+option go_package = "github.com/hughtaiyaki/goframeshop/app/order/api/order/v1";
+
+import "google/protobuf/timestamp.proto";
+
+// OrderService places and tracks orders. Shoppers (user tokens) reach the
+// "My" methods and see only their own orders; administrators (admin tokens)
+// reach ListOrders/GetOrder and see everyone's.
+//
+// Prices and the shipping address are never taken from the client: the
+// service reads the price of each goods from the goods service and the
+// address from the user service, and stores a copy in the order.
+service OrderService {
+  rpc CreateOrder(CreateOrderRequest) returns (OrderResponse);
+  rpc CancelOrder(CancelOrderRequest) returns (OrderResponse);
+  rpc ListMyOrders(ListMyOrdersRequest) returns (ListOrdersResponse);
+  rpc GetMyOrder(GetMyOrderRequest) returns (OrderResponse);
+  rpc ListOrders(ListOrdersRequest) returns (ListOrdersResponse);
+  rpc GetOrder(GetOrderRequest) returns (OrderResponse);
+}
+
+enum OrderStatus {
+  ORDER_STATUS_UNSPECIFIED = 0;
+  RESERVING = 1;         // stock reservation in progress; poll the order
+  PENDING_PAYMENT = 2;   // stock held until expires_at
+  CLOSING = 3;           // cancelled or expired; payment being closed, stock released
+  CLOSED = 4;            // finished without payment; see close_reason
+  PAYMENT_CONFIRMING = 5;  // paid; stock being committed
+  PAID = 6;              // paid and the stock is sold
+  EXCEPTION = 7;         // paid, but the stock could not be committed; being refunded
+}
+
+message OrderItemInput {
+  // v:min:1
+  uint64 goods_id = 1;
+  // v:between:1,99
+  uint32 quantity = 2;
+}
+
+message CreateOrderRequest {
+  // Chosen by the client and reused on every retry of the same submit.
+  // v:required|length:1,64
+  string request_id = 1;
+  // Duplicate goods are merged.
+  // v:required
+  repeated OrderItemInput items = 2;
+  // One of the shopper's own addresses.
+  // v:min:1
+  uint64 consignee_id = 3;
+  // v:length:0,255
+  string remark = 4;
+}
+
+message CancelOrderRequest {
+  // v:required|length:1,32
+  string order_no = 1;
+}
+
+message GetMyOrderRequest {
+  // v:required|length:1,32
+  string order_no = 1;
+}
+
+message GetOrderRequest {
+  // v:required|length:1,32
+  string order_no = 1;
+}
+
+message ListMyOrdersRequest {
+  OrderStatus status = 1;   // UNSPECIFIED for all
+  // v:min:1
+  uint32 page = 2;
+  // v:between:1,50
+  uint32 size = 3;
+}
+
+message ListOrdersRequest {
+  string order_no = 1;
+  uint64 user_id = 2;
+  OrderStatus status = 3;
+  google.protobuf.Timestamp created_from = 4;
+  google.protobuf.Timestamp created_to = 5;
+  // v:min:1
+  uint32 page = 6;
+  // v:between:1,50
+  uint32 size = 7;
+}
+
+message OrderResponse {
+  Order order = 1;
+}
+
+// Newest first.
+message ListOrdersResponse {
+  repeated Order items = 1;
+  uint32 page = 2;
+  uint32 size = 3;
+  uint64 total = 4;
+}
+
+message Order {
+  string order_no = 1;
+  uint64 user_id = 2;
+  OrderStatus status = 3;
+  // USER_CANCELLED, PAYMENT_TIMEOUT, RESERVE_TIMEOUT, INSUFFICIENT_STOCK,
+  // GOODS_UNAVAILABLE, RESERVE_CONFLICT, INVENTORY_CONFLICT; empty unless
+  // EXCEPTION, CLOSING or CLOSED.
+  string close_reason = 4;
+  uint64 total_cents = 5;
+  string consignee_name = 6;
+  string consignee_phone = 7;
+  string consignee_address = 8;
+  string remark = 9;
+  repeated OrderItem items = 10;
+  google.protobuf.Timestamp created_at = 11;
+  // Pay before this, or the order closes and the stock is released.
+  google.protobuf.Timestamp expires_at = 12;
+  google.protobuf.Timestamp closed_at = 13;
+  // When the money arrived.
+  google.protobuf.Timestamp paid_at = 14;
+}
+
+message OrderItem {
+  uint64 goods_id = 1;
+  string goods_name = 2;
+  string cover_url = 3;
+  uint64 unit_price_cents = 4;
+  uint32 quantity = 5;
+  uint64 subtotal_cents = 6;
+}

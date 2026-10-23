@@ -1,0 +1,31 @@
+# Local development template. Copy this file to config.yaml before startup.
+grpc:
+  name: "file"
+  address: ":31004"
+
+logger:
+  level: "all"
+  stdout: true
+
+database:
+  default:
+    link: "mysql:shop:change-me@tcp(127.0.0.1:3306)/file?loc=Local&parseTime=true"
+
+# Service discovery. Leave empty to use the local file registry instead.
+etcd:
+  address: "127.0.0.1:2379"
+
+# Token verification with the ADMIN public key (not the shop user key): only
+# administrators can record files. Leave it empty and export JWT_PUBLIC_KEY
+# instead if you prefer.
+jwt:
+  publicKey: ""
+  issuer: "goframeshop-admin"
+
+# Tracing (design §9): spans go to the OpenTelemetry Collector, which
+# forwards them to Jaeger (UI: http://127.0.0.1:16686). Leave endpoint empty
+# to turn tracing off. May also come from OTEL_ENDPOINT.
+otel:
+  endpoint: "127.0.0.1:4317"
+  sampleRatio: 1.0          # 1 = every trace (a lab); lower it under real load
+  environment: "local"

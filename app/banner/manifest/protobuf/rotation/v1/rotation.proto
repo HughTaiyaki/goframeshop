@@ -1,0 +1,78 @@
+syntax = "proto3";
+
+package rotation.v1;
+
+option go_package = "github.com/hughtaiyaki/goframeshop/app/banner/api/rotation/v1";
+
+import "google/protobuf/timestamp.proto";
+
+// RotationService manages the home-page carousel. Listing is public; every
+// write needs an administrator token.
+service RotationService {
+  rpc ListRotations(ListRotationsRequest) returns (ListRotationsResponse);
+  rpc CreateRotation(CreateRotationRequest) returns (CreateRotationResponse);
+  rpc UpdateRotation(UpdateRotationRequest) returns (UpdateRotationResponse);
+  rpc DeleteRotation(DeleteRotationRequest) returns (DeleteRotationResponse);
+}
+
+message ListRotationsRequest {
+  // v:min:1
+  uint32 page = 1;
+  // v:between:1,50
+  uint32 size = 2;
+}
+
+// Ordered by sort ascending, then id: the display order is the
+// administrator's decision, not the viewer's.
+message ListRotationsResponse {
+  repeated Rotation items = 1;
+  uint32 page = 2;
+  uint32 size = 3;
+  uint64 total = 4;
+}
+
+message Rotation {
+  uint64 rotation_id = 1;
+  uint64 file_id = 2;
+  string pic_url = 3;
+  string link = 4;
+  uint32 sort = 5;
+  google.protobuf.Timestamp created_at = 6;
+  google.protobuf.Timestamp updated_at = 7;
+}
+
+// The image must be a file in the file service. link, when set, must be an
+// absolute http or https URL.
+message CreateRotationRequest {
+  // v:min:1
+  uint64 file_id = 1;
+  // v:length:0,512
+  string link = 2;
+  // v:between:0,999
+  uint32 sort = 3;
+}
+
+message CreateRotationResponse {
+  uint64 rotation_id = 1;
+}
+
+// A full replacement of the editable fields.
+message UpdateRotationRequest {
+  // v:min:1
+  uint64 rotation_id = 1;
+  // v:min:1
+  uint64 file_id = 2;
+  // v:length:0,512
+  string link = 3;
+  // v:between:0,999
+  uint32 sort = 4;
+}
+
+message UpdateRotationResponse {}
+
+message DeleteRotationRequest {
+  // v:min:1
+  uint64 rotation_id = 1;
+}
+
+message DeleteRotationResponse {}

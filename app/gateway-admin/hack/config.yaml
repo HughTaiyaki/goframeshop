@@ -1,0 +1,13 @@
+# CLI tool, only in development environment.
+# https://goframe.org/docs/cli
+gfcli:
+  gen:
+    ctrl:
+      # The gateway has no database, so there is no dao section here.
+      - src: "api"
+        dst: "internal/controller"
+
+  docker:
+    build: "-a amd64 -s linux -p temp -ew"
+    tagPrefixes:
+      - local/goframeshop-gateway-admin

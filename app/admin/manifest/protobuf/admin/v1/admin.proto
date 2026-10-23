@@ -1,0 +1,45 @@
+syntax = "proto3";
+
+package admin.v1;
+
+option go_package = "github.com/hughtaiyaki/goframeshop/app/admin/api/admin/v1";
+
+// AdminService authenticates back-office administrators. Its tokens are signed
+// with a key pair of its own, so a shop user's token is never an admin token.
+//
+// There is deliberately no public registration: the first administrator is
+// created from the command line, and only a super administrator can create
+// more through CreateAdmin.
+service AdminService {
+  rpc Login(LoginRequest) returns (LoginResponse);
+  rpc CreateAdmin(CreateAdminRequest) returns (CreateAdminResponse);
+}
+
+message LoginRequest {
+  // v:required
+  string name = 1;
+  // v:required
+  string password = 2;
+}
+
+message LoginResponse {
+  string token_type = 1;
+  string access_token = 2;
+  uint32 expires_in_seconds = 3;
+  uint64 admin_id = 4;
+  string name = 5;
+  bool is_super = 6;
+}
+
+// Only a super administrator may call this. Anyone else gets PERMISSION_DENIED.
+message CreateAdminRequest {
+  // v:required|length:1,64
+  string name = 1;
+  // v:required|length:12,128
+  string password = 2;
+  bool is_super = 3;
+}
+
+message CreateAdminResponse {
+  uint64 admin_id = 1;
+}

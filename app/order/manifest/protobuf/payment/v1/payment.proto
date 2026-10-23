@@ -1,0 +1,45 @@
+syntax = "proto3";
+
+package payment.v1;
+
+option go_package = "github.com/hughtaiyaki/goframeshop/app/order/api/payment/v1";
+
+import "google/protobuf/timestamp.proto";
+import "order/v1/order.proto";
+
+// PaymentService connects orders to the payment provider (the simulator).
+//
+// PayOrder: shoppers (user tokens), for their own orders only.
+// NotifyPayment: called by gateway-h5 on behalf of the provider, with no
+// token. The provider's signature over the body is what authenticates it,
+// and even then it only triggers a query of the provider.
+service PaymentService {
+  rpc PayOrder(PayOrderRequest) returns (PayOrderResponse);
+  rpc NotifyPayment(NotifyPaymentRequest) returns (NotifyPaymentResponse);
+}
+
+message PayOrderRequest {
+  // v:required|length:1,32
+  string order_no = 1;
+}
+
+message PayOrderResponse {
+  string payment_id = 1;
+  // CREATED (go to pay_url), SUCCEEDED, CLOSED or REFUNDED.
+  string state = 2;
+  uint64 amount_cents = 3;
+  // The provider's checkout page; empty once there is nothing to pay.
+  string pay_url = 4;
+  google.protobuf.Timestamp expires_at = 5;
+  order.v1.Order order = 6;
+}
+
+message NotifyPaymentRequest {
+  // The exact bytes the provider posted, and its signature header.
+  // v:required
+  bytes body = 1;
+  // v:required
+  string signature = 2;
+}
+
+message NotifyPaymentResponse {}

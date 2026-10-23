@@ -1,0 +1,113 @@
+syntax = "proto3";
+
+package inventory.v1;
+
+option go_package = "github.com/hughtaiyaki/goframeshop/app/goods/api/inventory/v1";
+
+// InventoryService moves stock between available, reserved and sold, for the
+// order flow. It follows docs/GoFrame微服务商城详细设计.md sections 5.2–7.2:
+//
+//   Reserve: available -> reserved   Commit: reserved -> sold
+//   Release: reserved -> available   (sold stock is never released)
+//
+// Every call carries an operation_id chosen by the caller and stable across
+// retries (derived from the order, not a new id per attempt). The outcome is
+// stored in the same transaction as the stock change, so a retry after a lost
+// response returns the original outcome instead of acting twice. Business
+// refusals (not enough stock, wrong state) are outcomes, not RPC errors.
+//
+// Until the order service exists and has a service identity, these RPCs need
+// an administrator token; no gateway exposes them.
+service InventoryService {
+  rpc ReserveInventory(ReserveInventoryRequest) returns (InventoryOperationResponse);
+  rpc CommitInventory(CommitInventoryRequest) returns (InventoryOperationResponse);
+  rpc ReleaseInventory(ReleaseInventoryRequest) returns (InventoryOperationResponse);
+  // QueryInventoryOperation answers "did my call happen?" after a lost
+  // response. NOT_FOUND does not prove the call will not still arrive.
+  rpc QueryInventoryOperation(QueryInventoryOperationRequest) returns (QueryInventoryOperationResponse);
+}
+
+message InventoryItem {
+  // v:min:1
+  uint64 goods_id = 1;
+  // v:between:1,10000
+  uint32 quantity = 2;
+}
+
+message ReserveInventoryRequest {
+  // v:required|length:1,64
+  string operation_id = 1;
+  // v:required|length:1,64
+  string order_id = 2;
+  // Duplicate goods ids are merged. All items succeed together or none do.
+  // v:required|length:1,50
+  repeated InventoryItem items = 3;
+}
+
+// Commits every reservation of the order.
+message CommitInventoryRequest {
+  // v:required|length:1,64
+  string operation_id = 1;
+  // v:required|length:1,64
+  string order_id = 2;
+}
+
+// Releases the listed goods of the order. A reservation that does not exist
+// yet is recorded as RELEASED (a tombstone), so a late Reserve cannot create it.
+message ReleaseInventoryRequest {
+  // v:required|length:1,64
+  string operation_id = 1;
+  // v:required|length:1,64
+  string order_id = 2;
+  // v:required|length:1,50
+  repeated InventoryItem items = 3;
+}
+
+message QueryInventoryOperationRequest {
+  // v:required|length:1,64
+  string operation_id = 1;
+}
+
+enum OperationOutcome {
+  OPERATION_OUTCOME_UNSPECIFIED = 0;
+  SUCCEEDED = 1;
+  // Reserve: at least one item lacks available stock. Nothing changed.
+  INSUFFICIENT_STOCK = 2;
+  // Reserve: at least one item does not exist, was deleted or is off shelf.
+  GOODS_UNAVAILABLE = 3;
+  // Reserve after a Release of the same order: refused, nothing changed.
+  ALREADY_RELEASED = 4;
+  // Commit of a released reservation, Release of a committed one, or a
+  // Reserve that disagrees with an existing reservation. Nothing changed.
+  STATE_CONFLICT = 5;
+  // Commit before any reservation exists. Not stored: retry later with the
+  // same operation id.
+  NOT_READY = 6;
+}
+
+enum ReservationState {
+  RESERVATION_STATE_UNSPECIFIED = 0;
+  RESERVED = 1;
+  COMMITTED = 2;
+  RELEASED = 3;
+}
+
+message ReservationStatus {
+  uint64 goods_id = 1;
+  uint32 quantity = 2;
+  ReservationState state = 3;
+}
+
+// original_outcome never changes once stored. reservations is the current
+// state of the order's reservations, read in the same transaction; a past
+// SUCCEEDED does not mean the stock is still held.
+message InventoryOperationResponse {
+  string operation_id = 1;
+  OperationOutcome original_outcome = 2;
+  repeated ReservationStatus reservations = 3;
+}
+
+message QueryInventoryOperationResponse {
+  bool found = 1;
+  InventoryOperationResponse operation = 2;
+}

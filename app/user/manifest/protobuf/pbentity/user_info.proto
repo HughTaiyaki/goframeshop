@@ -1,0 +1,26 @@
+// ==========================================================================
+// Code generated and maintained by GoFrame CLI tool. DO NOT EDIT.
+// ==========================================================================
+
+syntax = "proto3";
+
+package pbentity;
+
+option go_package = "github.com/hughtaiyaki/goframeshop/app/user/api/pbentity";
+
+import "google/protobuf/timestamp.proto";
+
+message UserInfo {
+    uint64                    Id               = 1;  //
+    string                    Name             = 2;  //
+    string                    Avatar           = 3;  //
+    string                    PasswordHash     = 4;  //
+    bytes                     PasswordSalt     = 5;  //
+    uint32                    Sex              = 6;  // 0 unknown, 1 male, 2 female
+    uint32                    Status           = 7;  // 1 active, 2 blocked
+    string                    Sign             = 8;  //
+    string                    SecretAnswerHash = 9;  //
+    google.protobuf.Timestamp CreatedAt        = 10; //
+    google.protobuf.Timestamp UpdatedAt        = 11; //
+    google.protobuf.Timestamp DeletedAt        = 12; //
+}

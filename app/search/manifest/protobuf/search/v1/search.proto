@@ -1,0 +1,64 @@
+syntax = "proto3";
+
+package search.v1;
+
+option go_package = "github.com/hughtaiyaki/goframeshop/app/search/api/search/v1";
+
+// SearchService searches the goods catalogue in Elasticsearch. It is public
+// and read-only. The index holds only goods that are on shelf and not deleted,
+// kept in step with MySQL through the binlog (see docs/development/search-service.md).
+service SearchService {
+  rpc SearchGoods(SearchGoodsRequest) returns (SearchGoodsResponse);
+}
+
+enum SortBy {
+  SORT_BY_RELEVANCE = 0;   // best match first; newest first without a keyword
+  SORT_BY_PRICE_ASC = 1;
+  SORT_BY_PRICE_DESC = 2;
+  SORT_BY_SALES = 3;       // most sold first
+  SORT_BY_NEWEST = 4;
+}
+
+message SearchGoodsRequest {
+  // Matched against name and tags with the IK Chinese analyzer. Empty lists
+  // everything that passes the filters.
+  // v:length:0,100
+  string keyword = 1;
+  // Goods under this category at any level; 0 for all.
+  uint64 category_id = 2;
+  // Exact brand.
+  // v:length:0,30
+  string brand = 3;
+  // Price range in cents, both inclusive; 0 means unbounded.
+  uint64 min_price_cents = 4;
+  uint64 max_price_cents = 5;
+  SortBy sort = 6;
+  // page * size may not exceed 10000 (Elasticsearch's result window).
+  // v:min:1
+  uint32 page = 7;
+  // v:between:1,100
+  uint32 size = 8;
+}
+
+message SearchGoodsResponse {
+  repeated SearchHit items = 1;
+  uint32 page = 2;
+  uint32 size = 3;
+  uint64 total = 4;
+}
+
+message SearchHit {
+  uint64 goods_id = 1;
+  string name = 2;
+  // The name with matches wrapped in <em></em>. Everything else in it is
+  // HTML-escaped, so it is safe to insert as HTML; name is plain text.
+  string highlighted_name = 3;
+  uint64 price_cents = 4;
+  string brand = 5;
+  uint32 stock = 6;
+  uint32 sale = 7;
+  string cover_url = 8;
+  uint64 level1_category_id = 9;
+  uint64 level2_category_id = 10;
+  uint64 level3_category_id = 11;
+}

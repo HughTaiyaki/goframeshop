@@ -1,0 +1,66 @@
+# Local development template. Copy this file to config.yaml before startup.
+grpc:
+  name: "order"
+  address: ":31007"
+
+logger:
+  level: "all"
+  stdout: true
+
+database:
+  default:
+    link: "mysql:shop:change-me@tcp(127.0.0.1:3306)/orders?loc=Local&parseTime=true"
+
+etcd:
+  address: "127.0.0.1:2379"
+
+order:
+  reserveTimeout: "60s"     # RESERVING longer than this closes the order
+  paymentTimeout: "15m"     # unpaid orders close and release their stock after this
+  recoveryInterval: "5s"    # how often the worker drives stuck and expired orders
+                            # (expired orders normally close on their expiry
+                            # message; this scan is the fallback)
+
+# Events (design §8). The outbox relay publishes order events; the expiry
+# consumer closes orders when their delayed message arrives.
+# May also come from RABBITMQ_URL.
+rabbitmq:
+  url: "amqp://shop:change-me@127.0.0.1:5672/"
+outbox:
+  interval: "500ms"         # how often the relay looks for unsent events
+
+# Shopper tokens: the PUBLIC key of the user service's pair.
+jwtUser:
+  publicKey: ""
+  issuer: "goframeshop-user"
+
+# Administrator tokens: the PUBLIC key of the admin service's pair.
+jwtAdmin:
+  publicKey: ""
+  issuer: "goframeshop-admin"
+
+# This service's OWN key pair (a third one, from `make jwt-keys`). The private
+# key signs the short-lived service token shown to the goods service for the
+# inventory RPCs; the public half goes into the goods config as jwtOrder.
+# Keys may also come from JWTUSER_PUBLIC_KEY, JWTADMIN_PUBLIC_KEY and
+# JWTSERVICE_PRIVATE_KEY.
+jwtService:
+  privateKey: ""
+  issuer: "goframeshop-order"
+  ttl: "5m"
+
+# The payment simulator's PUBLIC key, to check the signature on its payment
+# notifications (its private half is notify.privateKey in the paysim config;
+# a fourth pair from `make jwt-keys`). May also come from PAYSIM_PUBLIC_KEY.
+# The simulator itself is found through etcd as "paysim" and is called with
+# the jwtService token above.
+paysim:
+  publicKey: ""
+
+# Tracing (design §9): spans go to the OpenTelemetry Collector, which
+# forwards them to Jaeger (UI: http://127.0.0.1:16686). Leave endpoint empty
+# to turn tracing off. May also come from OTEL_ENDPOINT.
+otel:
+  endpoint: "127.0.0.1:4317"
+  sampleRatio: 1.0          # 1 = every trace (a lab); lower it under real load
+  environment: "local"

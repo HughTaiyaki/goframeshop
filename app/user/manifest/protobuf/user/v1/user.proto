@@ -1,0 +1,88 @@
+syntax = "proto3";
+
+package user.v1;
+
+option go_package = "github.com/hughtaiyaki/goframeshop/app/user/api/user/v1";
+
+import "google/protobuf/timestamp.proto";
+
+// UserService defines the public user API. Authentication is implemented later.
+service UserService {
+  rpc RegisterUser(RegisterRequest) returns (RegisterResponse);
+  rpc Login(LoginRequest) returns (LoginResponse);
+  rpc GetProfile(GetProfileRequest) returns (GetProfileResponse);
+  rpc ChangePassword(ChangePasswordRequest) returns (ChangePasswordResponse);
+  // UpdateProfile replaces the editable profile fields of the caller. The
+  // username and the status are not editable here.
+  rpc UpdateProfile(UpdateProfileRequest) returns (UpdateProfileResponse);
+}
+
+message RegisterRequest {
+  // v:required|length:1,200
+  string username = 1;
+  // v:required|length:8,128
+  string password = 2;
+  string avatar = 3;
+  uint32 sex = 4; // 0 unknown, 1 male, 2 female
+  string sign = 5;
+}
+
+message RegisterResponse {
+  uint64 user_id = 1;
+}
+
+message LoginRequest {
+  // v:required
+  string username = 1;
+  // v:required
+  string password = 2;
+}
+
+message LoginResponse {
+  string token_type = 1;
+  string access_token = 2;
+  uint32 expires_in_seconds = 3;
+  UserProfile profile = 4;
+}
+
+// The server derives the user identity from authentication metadata.
+message GetProfileRequest {}
+
+message GetProfileResponse {
+  UserProfile profile = 1;
+}
+
+message ChangePasswordRequest {
+  // v:required
+  string current_password = 1;
+  // v:required|length:8,128
+  string new_password = 2;
+}
+
+message ChangePasswordResponse {}
+
+// A full replacement: an empty avatar or sign clears it.
+message UpdateProfileRequest {
+  // Empty, or an absolute http(s) URL.
+  // v:length:0,512
+  string avatar = 1;
+  // v:in:0,1,2
+  uint32 sex = 2; // 0 unknown, 1 male, 2 female
+  // v:length:0,255
+  string sign = 3;
+}
+
+message UpdateProfileResponse {
+  UserProfile profile = 1;
+}
+
+// Public profile fields are intentionally separate from pbentity.UserInfo.
+message UserProfile {
+  uint64 user_id = 1;
+  string username = 2;
+  string avatar = 3;
+  uint32 sex = 4;
+  string sign = 5;
+  uint32 status = 6;
+  google.protobuf.Timestamp created_at = 7;
+}

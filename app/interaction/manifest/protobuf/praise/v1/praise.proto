@@ -1,0 +1,61 @@
+syntax = "proto3";
+
+package praise.v1;
+
+option go_package = "github.com/hughtaiyaki/goframeshop/app/interaction/api/praise/v1";
+
+import "google/protobuf/timestamp.proto";
+
+// PraiseService manages the authenticated user's own praises. The user id
+// always comes from the access token, never from a request field.
+service PraiseService {
+  rpc ListPraises(ListPraisesRequest) returns (ListPraisesResponse);
+  rpc CreatePraise(CreatePraiseRequest) returns (CreatePraiseResponse);
+  rpc DeletePraise(DeletePraiseRequest) returns (DeletePraiseResponse);
+}
+
+message ListPraisesRequest {
+  // 1 goods, 2 article.
+  // v:in:1,2
+  uint32 object_type = 1;
+  // v:min:1
+  uint32 page = 2;
+  // v:between:1,100
+  uint32 size = 3;
+}
+
+// Results are ordered by praise_id descending so paging is deterministic.
+// total counts the caller's matching rows before paging.
+message ListPraisesResponse {
+  repeated Praise items = 1;
+  uint32 page = 2;
+  uint32 size = 3;
+  uint64 total = 4;
+}
+
+// Creating the same (object_type, object_id) twice returns ALREADY_EXISTS.
+message CreatePraiseRequest {
+  // v:in:1,2
+  uint32 object_type = 1;
+  // v:min:1
+  uint64 object_id = 2;
+}
+
+message CreatePraiseResponse {
+  uint64 praise_id = 1;
+}
+
+// Deleting another user's row, or one that does not exist, returns NOT_FOUND.
+message DeletePraiseRequest {
+  // v:min:1
+  uint64 praise_id = 1;
+}
+
+message DeletePraiseResponse {}
+
+message Praise {
+  uint64 praise_id = 1;
+  uint32 object_type = 2;
+  uint64 object_id = 3;
+  google.protobuf.Timestamp created_at = 4;
+}

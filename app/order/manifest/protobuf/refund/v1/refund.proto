@@ -1,0 +1,75 @@
+syntax = "proto3";
+
+package refund.v1;
+
+option go_package = "github.com/hughtaiyaki/goframeshop/app/order/api/refund/v1";
+
+import "google/protobuf/timestamp.proto";
+
+// RefundService records after-sale requests. A shopper may ask only about a
+// paid order of their own, and only for goods in it; the user id always comes
+// from the token. Until the payment simulator exists no order can be paid,
+// so CreateRefund answers FAILED_PRECONDITION for now.
+service RefundService {
+  rpc CreateRefund(CreateRefundRequest) returns (RefundResponse);
+  rpc ListMyRefunds(ListMyRefundsRequest) returns (ListRefundsResponse);
+  rpc GetMyRefund(GetMyRefundRequest) returns (RefundResponse);
+  rpc ListRefunds(ListRefundsRequest) returns (ListRefundsResponse);
+}
+
+enum RefundStatus {
+  REFUND_STATUS_UNSPECIFIED = 0;
+  PENDING = 1;
+  APPROVED = 2;
+  REJECTED = 3;
+}
+
+message CreateRefundRequest {
+  // v:required|length:1,32
+  string order_no = 1;
+  // v:min:1
+  uint64 goods_id = 2;
+  // v:required|length:1,255
+  string reason = 3;
+}
+
+message ListMyRefundsRequest {
+  // v:min:1
+  uint32 page = 1;
+  // v:between:1,50
+  uint32 size = 2;
+}
+
+message GetMyRefundRequest {
+  // v:required|length:1,32
+  string refund_no = 1;
+}
+
+message ListRefundsRequest {
+  RefundStatus status = 1;
+  // v:min:1
+  uint32 page = 2;
+  // v:between:1,50
+  uint32 size = 3;
+}
+
+message RefundResponse {
+  Refund refund = 1;
+}
+
+message ListRefundsResponse {
+  repeated Refund items = 1;
+  uint32 page = 2;
+  uint32 size = 3;
+  uint64 total = 4;
+}
+
+message Refund {
+  string refund_no = 1;
+  string order_no = 2;
+  uint64 user_id = 3;
+  uint64 goods_id = 4;
+  string reason = 5;
+  RefundStatus status = 6;
+  google.protobuf.Timestamp created_at = 7;
+}

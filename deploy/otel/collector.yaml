@@ -1,0 +1,52 @@
+# OpenTelemetry Collector: every service sends its spans here (OTLP gRPC
+# :4317), and the collector forwards them to Jaeger. Services never talk to
+# Jaeger directly, so the trace backend can change without touching them,
+# and logs and metrics can later take the same road (design §3.2).
+#
+# Sensitive values are already removed inside each service before export
+# (utility/telemetry). transform/scrub below is the second line of defence,
+# in case a service runs without that protection.
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+      http:
+        endpoint: 0.0.0.0:4318
+
+processors:
+  memory_limiter:
+    check_interval: 1s
+    limit_mib: 256
+  # GoFrame records request headers, gRPC metadata and Redis arguments as
+  # span EVENT attributes (JSON text), and every SQL statement with its
+  # values as the span attribute db.statement. Mask the secrets; drop the
+  # Redis arguments (cache contents) entirely. "$$" is a literal "$" here.
+  transform/scrub:
+    error_mode: ignore
+    trace_statements:
+      - context: spanevent
+        statements:
+          - replace_pattern(attributes["http.request.headers"], "(?i)(\"(authorization|cookie|x-paysim-signature)\":)(\"[^\"]*\"|\\[[^\\]]*\\])", "$${1}\"[REDACTED]\"")
+          - replace_pattern(attributes["http.response.headers"], "(?i)(\"set-cookie\":)(\"[^\"]*\"|\\[[^\\]]*\\])", "$${1}\"[REDACTED]\"")
+          - replace_pattern(attributes["grpc.metadata.incoming"], "(?i)(\"authorization\":)(\"[^\"]*\"|\\[[^\\]]*\\])", "$${1}\"[REDACTED]\"")
+          - replace_pattern(attributes["grpc.metadata.outgoing"], "(?i)(\"authorization\":)(\"[^\"]*\"|\\[[^\\]]*\\])", "$${1}\"[REDACTED]\"")
+          - delete_key(attributes, "redis.execution.arguments")
+      # SQL with its values filled in: keep the statement, mask the strings.
+      - context: span
+        statements:
+          - "replace_pattern(attributes[\"db.statement\"], \"'[^']*'\", \"'?'\")"
+  batch: {}
+
+exporters:
+  otlp/jaeger:
+    endpoint: jaeger:4317
+    tls:
+      insecure: true
+
+service:
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [memory_limiter, transform/scrub, batch]
+      exporters: [otlp/jaeger]

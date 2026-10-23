@@ -1,0 +1,8 @@
+# CLI tool, only in development environment.
+# https://goframe.org/docs/cli
+# The search service owns no tables, so there is no dao section.
+gfcli:
+  docker:
+    build: "-a amd64 -s linux -p temp -ew"
+    tagPrefixes:
+      - local/goframeshop-search

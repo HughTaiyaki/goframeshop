@@ -1,0 +1,27 @@
+// ==========================================================================
+// Code generated and maintained by GoFrame CLI tool. DO NOT EDIT.
+// ==========================================================================
+
+syntax = "proto3";
+
+package pbentity;
+
+option go_package = "github.com/hughtaiyaki/goframeshop/app/user/api/pbentity";
+
+import "google/protobuf/timestamp.proto";
+
+message ConsigneeInfo {
+    uint64                    Id        = 1;  //
+    uint64                    UserId    = 2;  //
+    uint32                    IsDefault = 3;  //
+    string                    Name      = 4;  //
+    string                    Phone     = 5;  //
+    string                    Province  = 6;  //
+    string                    City      = 7;  //
+    string                    Town      = 8;  //
+    string                    Street    = 9;  //
+    string                    Detail    = 10; //
+    google.protobuf.Timestamp CreatedAt = 11; //
+    google.protobuf.Timestamp UpdatedAt = 12; //
+    google.protobuf.Timestamp DeletedAt = 13; //
+}

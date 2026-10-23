@@ -1,0 +1,57 @@
+# Local development template for the back-office gateway.
+# Copy it to config.yaml before starting the service.
+server:
+  address:     ":8299"
+  openapiPath: "/api.json"
+  swaggerPath: "/swagger"
+
+logger:
+  level : "all"
+  stdout: true
+
+# Service discovery. The gateway resolves "admin" and "file" through etcd.
+etcd:
+  address: "127.0.0.1:2379"
+
+# The gateway holds no database of its own: file metadata is recorded by the
+# file service.
+
+# Token verification with the ADMIN public key (the key pair of the admin
+# service, not of the user service). Leave it empty and export JWT_PUBLIC_KEY
+# instead if you prefer.
+jwt:
+  publicKey: ""
+  issuer: "goframeshop-admin"
+
+# The request body limit is derived from this (plus 1 MiB for the multipart
+# framing); there is no separate server.clientMaxBodySize to keep in sync.
+upload:
+  maxImageBytes: 5242880   # 5 MiB
+
+# Where uploaded images go: "local" (default, for development) or "qiniu".
+storage:
+  driver: "local"
+  local:
+    dir: "./uploads"                              # relative to app/gateway-admin
+    baseUrl: "http://127.0.0.1:8299/files"
+
+# Used only when storage.driver is "qiniu". Use YOUR OWN account: create a
+# bucket in the Qiniu console and an AccessKey/SecretKey pair. Never commit
+# them, and never reuse keys printed in a tutorial; they belong to someone else.
+# The keys may also come from QINIU_ACCESS_KEY / QINIU_SECRET_KEY.
+qiniu:
+  accessKey: ""
+  secretKey: ""
+  bucket: ""
+  domain: ""          # the bucket's download domain, e.g. https://img.example.com
+  region: "z2"        # z0 East China, z1 North China, z2 South China
+  maxBytes: 5242880
+  mimeLimit: "image/jpeg;image/png;image/gif;image/webp"
+
+# Tracing (design §9): spans go to the OpenTelemetry Collector, which
+# forwards them to Jaeger (UI: http://127.0.0.1:16686). Leave endpoint empty
+# to turn tracing off. May also come from OTEL_ENDPOINT.
+otel:
+  endpoint: "127.0.0.1:4317"
+  sampleRatio: 1.0          # 1 = every trace (a lab); lower it under real load
+  environment: "local"

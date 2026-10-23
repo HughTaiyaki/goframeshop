@@ -1,0 +1,71 @@
+syntax = "proto3";
+
+package comment.v1;
+
+option go_package = "github.com/hughtaiyaki/goframeshop/app/interaction/api/comment/v1";
+
+import "google/protobuf/timestamp.proto";
+
+// CommentService manages comments on goods and articles. ListComments is
+// public; writing and deleting need an access token, and the author id always
+// comes from that token.
+service CommentService {
+  rpc ListComments(ListCommentsRequest) returns (ListCommentsResponse);
+  rpc CreateComment(CreateCommentRequest) returns (CreateCommentResponse);
+  rpc DeleteComment(DeleteCommentRequest) returns (DeleteCommentResponse);
+}
+
+message ListCommentsRequest {
+  // 1 goods, 2 article.
+  // v:in:1,2
+  uint32 object_type = 1;
+  // v:min:1
+  uint64 object_id = 2;
+  // v:min:1
+  uint32 page = 3;
+  // v:between:1,100
+  uint32 size = 4;
+}
+
+// Top-level comments and replies come back in one flat list, newest first.
+// Clients build the tree from parent_id. Deleted comments are left out.
+message ListCommentsResponse {
+  repeated Comment items = 1;
+  uint32 page = 2;
+  uint32 size = 3;
+  uint64 total = 4;
+}
+
+message CreateCommentRequest {
+  // v:in:1,2
+  uint32 object_type = 1;
+  // v:min:1
+  uint64 object_id = 2;
+  // 0 for a top-level comment. A reply must point at a live comment on the
+  // same object, otherwise the call fails with INVALID_ARGUMENT.
+  uint64 parent_id = 3;
+  // v:required|length:1,255
+  string content = 4;
+}
+
+message CreateCommentResponse {
+  uint64 comment_id = 1;
+}
+
+// Only the author can delete a comment. Anyone else gets NOT_FOUND.
+message DeleteCommentRequest {
+  // v:min:1
+  uint64 comment_id = 1;
+}
+
+message DeleteCommentResponse {}
+
+message Comment {
+  uint64 comment_id = 1;
+  uint64 parent_id = 2;
+  uint64 user_id = 3;
+  uint32 object_type = 4;
+  uint64 object_id = 5;
+  string content = 6;
+  google.protobuf.Timestamp created_at = 7;
+}

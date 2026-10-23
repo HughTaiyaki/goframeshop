@@ -1,0 +1,42 @@
+# Local development template. Copy this file to config.yaml before startup.
+grpc:
+  name: "search"
+  address: ":31006"
+
+logger:
+  level: "all"
+  stdout: true
+
+# Service discovery. Leave empty to use the local file registry instead.
+etcd:
+  address: "127.0.0.1:2379"
+
+elasticsearch:
+  addresses: ["http://127.0.0.1:9200"]
+  # Searches and writes go to this alias; every start builds a fresh physical
+  # index (goods_<timestamp>) and moves the alias to it.
+  alias: "goods"
+
+# Read-only access to the goods tables, used to load documents. search_sync
+# is created by deploy/mysql/init/007_search_sync_user.sql with SELECT only.
+database:
+  goods_source:
+    link: "mysql:search_sync:change-me@tcp(127.0.0.1:3306)/goods?loc=Local&parseTime=true"
+
+# The binlog stream, read with the same read-only account (it also holds
+# REPLICATION SLAVE / REPLICATION CLIENT). serverId must be unique among
+# everything replicating from this MySQL.
+binlog:
+  addr: "127.0.0.1:3306"
+  user: "search_sync"
+  password: "change-me"
+  serverId: 1001
+  database: "goods"
+
+# Tracing (design §9): spans go to the OpenTelemetry Collector, which
+# forwards them to Jaeger (UI: http://127.0.0.1:16686). Leave endpoint empty
+# to turn tracing off. May also come from OTEL_ENDPOINT.
+otel:
+  endpoint: "127.0.0.1:4317"
+  sampleRatio: 1.0          # 1 = every trace (a lab); lower it under real load
+  environment: "local"

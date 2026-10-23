@@ -1,0 +1,61 @@
+syntax = "proto3";
+
+package collection.v1;
+
+option go_package = "github.com/hughtaiyaki/goframeshop/app/interaction/api/collection/v1";
+
+import "google/protobuf/timestamp.proto";
+
+// CollectionService manages the authenticated user's own collections. The user id
+// always comes from the access token, never from a request field.
+service CollectionService {
+  rpc ListCollections(ListCollectionsRequest) returns (ListCollectionsResponse);
+  rpc CreateCollection(CreateCollectionRequest) returns (CreateCollectionResponse);
+  rpc DeleteCollection(DeleteCollectionRequest) returns (DeleteCollectionResponse);
+}
+
+message ListCollectionsRequest {
+  // 1 goods, 2 article.
+  // v:in:1,2
+  uint32 object_type = 1;
+  // v:min:1
+  uint32 page = 2;
+  // v:between:1,100
+  uint32 size = 3;
+}
+
+// Results are ordered by collection_id descending so paging is deterministic.
+// total counts the caller's matching rows before paging.
+message ListCollectionsResponse {
+  repeated Collection items = 1;
+  uint32 page = 2;
+  uint32 size = 3;
+  uint64 total = 4;
+}
+
+// Creating the same (object_type, object_id) twice returns ALREADY_EXISTS.
+message CreateCollectionRequest {
+  // v:in:1,2
+  uint32 object_type = 1;
+  // v:min:1
+  uint64 object_id = 2;
+}
+
+message CreateCollectionResponse {
+  uint64 collection_id = 1;
+}
+
+// Deleting another user's row, or one that does not exist, returns NOT_FOUND.
+message DeleteCollectionRequest {
+  // v:min:1
+  uint64 collection_id = 1;
+}
+
+message DeleteCollectionResponse {}
+
+message Collection {
+  uint64 collection_id = 1;
+  uint32 object_type = 2;
+  uint64 object_id = 3;
+  google.protobuf.Timestamp created_at = 4;
+}

@@ -1,0 +1,113 @@
+syntax = "proto3";
+
+package consignee.v1;
+
+option go_package = "github.com/hughtaiyaki/goframeshop/app/user/api/consignee/v1";
+
+import "google/protobuf/timestamp.proto";
+
+// Every RPC operates on the authenticated user's own addresses.
+service ConsigneeService {
+  rpc ListConsignees(ListConsigneesRequest) returns (ListConsigneesResponse);
+  rpc CreateConsignee(CreateConsigneeRequest) returns (CreateConsigneeResponse);
+  rpc UpdateConsignee(UpdateConsigneeRequest) returns (UpdateConsigneeResponse);
+  rpc DeleteConsignee(DeleteConsigneeRequest) returns (DeleteConsigneeResponse);
+  // GetConsignee returns one of the caller's addresses. The order service
+  // calls it with the shopper's own token to snapshot the shipping address.
+  rpc GetConsignee(GetConsigneeRequest) returns (GetConsigneeResponse);
+}
+
+// Someone else's address, or a deleted one, is NOT_FOUND.
+message GetConsigneeRequest {
+  // v:min:1
+  uint64 consignee_id = 1;
+}
+
+message GetConsigneeResponse {
+  Consignee consignee = 1;
+}
+
+message ListConsigneesRequest {
+  // Page numbers start at 1; no implicit default is applied by gRPC.
+  // v:min:1
+  uint32 page = 1;
+  // v:between:1,100
+  uint32 size = 2;
+}
+
+// Results are ordered by consignee_id descending so paging is deterministic.
+// total counts this user's non-deleted addresses before paging.
+message ListConsigneesResponse {
+  repeated Consignee items = 1;
+  uint32 page = 2;
+  uint32 size = 3;
+  uint64 total = 4;
+}
+
+message CreateConsigneeRequest {
+  bool is_default = 1;
+  // v:required|length:1,64
+  string name = 2;
+  // v:required|length:1,32
+  string phone = 3;
+  // v:required|length:1,64
+  string province = 4;
+  // v:required|length:1,64
+  string city = 5;
+  // v:required|length:1,64
+  string town = 6;
+  // v:required|length:1,128
+  string street = 7;
+  // v:required|length:1,255
+  string detail = 8;
+}
+
+message CreateConsigneeResponse {
+  uint64 consignee_id = 1;
+}
+
+message UpdateConsigneeRequest {
+  // v:min:1
+  uint64 consignee_id = 1;
+  bool is_default = 2;
+  // v:required|length:1,64
+  string name = 3;
+  // v:required|length:1,32
+  string phone = 4;
+  // v:required|length:1,64
+  string province = 5;
+  // v:required|length:1,64
+  string city = 6;
+  // v:required|length:1,64
+  string town = 7;
+  // v:required|length:1,128
+  string street = 8;
+  // v:required|length:1,255
+  string detail = 9;
+}
+
+message UpdateConsigneeResponse {
+  uint64 consignee_id = 1;
+}
+
+message DeleteConsigneeRequest {
+  // v:min:1
+  uint64 consignee_id = 1;
+}
+
+message DeleteConsigneeResponse {}
+
+// Public address fields are intentionally separate from pbentity.ConsigneeInfo.
+message Consignee {
+  uint64 consignee_id = 1;
+  bool is_default = 2;
+  string name = 3;
+  string phone = 4;
+  string province = 5;
+  string city = 6;
+  string town = 7;
+  string street = 8;
+  string detail = 9;
+  google.protobuf.Timestamp created_at = 10;
+  google.protobuf.Timestamp updated_at = 11;
+}

@@ -1,0 +1,95 @@
+syntax = "proto3";
+
+package provider.v1;
+
+option go_package = "github.com/hughtaiyaki/goframeshop/app/paysim/api/provider/v1";
+
+import "google/protobuf/timestamp.proto";
+
+// PaymentProvider is the merchant API of the payment simulator, a stand-in
+// for an external payment provider. Only the merchant (the order service,
+// with its service token) may call it. The payer never uses this API: they
+// pay on the simulator's checkout page (pay_url).
+//
+// Every call names the payment by the merchant's stable payment_id, so any
+// call can be retried. Pay (on the checkout page) and Close are decided on
+// the same row in one transaction: a payment is either paid or closed, never
+// both, and a Close that arrives before Create leaves a CLOSED tombstone so
+// the payment can no longer be created or paid.
+service PaymentProvider {
+  rpc CreatePayment(CreatePaymentRequest) returns (PaymentResponse);
+  rpc ClosePayment(ClosePaymentRequest) returns (PaymentResponse);
+  rpc QueryPayment(QueryPaymentRequest) returns (PaymentResponse);
+  rpc RefundPayment(RefundPaymentRequest) returns (RefundResponse);
+}
+
+enum PaymentState {
+  PAYMENT_STATE_UNSPECIFIED = 0;
+  CREATED = 1;    // waiting for the payer
+  SUCCEEDED = 2;  // paid
+  CLOSED = 3;     // closed unpaid; can never be paid
+  REFUNDED = 4;   // paid, then fully refunded
+}
+
+message CreatePaymentRequest {
+  // v:required|length:1,40
+  string payment_id = 1;
+  // v:required|length:1,32
+  string order_no = 2;
+  // v:min:1
+  uint64 amount_cents = 3;
+  // Only CNY.
+  // v:required|in:CNY
+  string currency = 4;
+  // The payer cannot pay after this.
+  // v:required
+  google.protobuf.Timestamp expires_at = 5;
+}
+
+message ClosePaymentRequest {
+  // v:required|length:1,40
+  string payment_id = 1;
+  // Recorded on the tombstone when the payment does not exist yet.
+  // v:required|length:1,32
+  string order_no = 2;
+}
+
+message QueryPaymentRequest {
+  // v:required|length:1,40
+  string payment_id = 1;
+}
+
+// Refunds the whole payment. The same refund_id twice refunds once.
+message RefundPaymentRequest {
+  // v:required|length:1,48
+  string refund_id = 1;
+  // v:required|length:1,40
+  string payment_id = 2;
+  // Must equal the payment's amount: only full refunds.
+  // v:min:1
+  uint64 amount_cents = 3;
+}
+
+message PaymentResponse {
+  Payment payment = 1;
+}
+
+message Payment {
+  string payment_id = 1;
+  string order_no = 2;
+  uint64 amount_cents = 3;
+  string currency = 4;
+  PaymentState state = 5;
+  // Set once paid; unique per payment.
+  string provider_tx_id = 6;
+  // Where the payer pays. Empty for a tombstone.
+  string pay_url = 7;
+  google.protobuf.Timestamp expires_at = 8;
+  google.protobuf.Timestamp paid_at = 9;
+}
+
+message RefundResponse {
+  string refund_id = 1;
+  string payment_id = 2;
+  uint64 amount_cents = 3;
+}

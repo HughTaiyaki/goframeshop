@@ -1,0 +1,33 @@
+# Local development template. Copy this file to config.yaml before startup.
+grpc:
+  name: "user"
+  address: ":31001"
+
+logger:
+  level: "all"
+  stdout: true
+
+database:
+  default:
+    link: "mysql:shop:change-me@tcp(127.0.0.1:3306)/user?loc=Local&parseTime=true"
+
+# Service discovery. Leave empty to use the local file registry instead.
+etcd:
+  address: "127.0.0.1:2379"
+
+# Access tokens are signed with Ed25519. `make jwt-keys` prints a key pair:
+# the PRIVATE key belongs here and nowhere else; the public key goes to the
+# gateway and every other service. The service refuses to start without it.
+# Leave it empty and export JWT_PRIVATE_KEY instead if you prefer.
+jwt:
+  privateKey: ""
+  issuer: "goframeshop-user"
+  ttl: "2h"
+
+# Tracing (design §9): spans go to the OpenTelemetry Collector, which
+# forwards them to Jaeger (UI: http://127.0.0.1:16686). Leave endpoint empty
+# to turn tracing off. May also come from OTEL_ENDPOINT.
+otel:
+  endpoint: "127.0.0.1:4317"
+  sampleRatio: 1.0          # 1 = every trace (a lab); lower it under real load
+  environment: "local"
