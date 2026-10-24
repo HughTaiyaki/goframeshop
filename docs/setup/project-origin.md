@@ -78,7 +78,7 @@ github.com/hughtaiyaki/goframeshop
 新增或改写以下内容：
 
 - `compose.yaml`：定义 MySQL 8.4.11、etcd 3.6.1、健康检查、端口和命名数据卷。
-- `.env.example`：列出可覆盖的本地环境变量。
+- `.env.example`：列出本地环境变量和需要自己设置的密码（占位符 `change-me`）。
 - `deploy/mysql/init/001_user_schema.sql`：创建 `user_info` 和 `consignee_info` 表。
 - `scripts/check-env.sh`：检查工具版本和 Docker 守护进程。
 - 根 `Makefile`：封装环境检查、基础设施启停和验证命令。
@@ -141,7 +141,7 @@ gf gen pbentity
 | --- | --- | --- |
 | `.gitattributes` | GoFrame 生成 | Git 属性模板，一般不需要修改 |
 | `.gitignore` | 混合 | 基于项目需要补充了配置、构建产物和 `.DS_Store` 忽略规则 |
-| `.env.example` | 手写 | Compose 本地变量示例，可以修改并提交；真实 `.env` 不提交 |
+| `.env.example` | 手写 | Compose 本地变量示例，只有占位符；真实 `.env` 不提交 |
 | `go.mod` | 混合 | 模块初始化后人工固定版本，再由 Go 工具维护依赖关系 |
 | `go.sum` | Go 工具维护 | 依赖校验和，随依赖命令更新，禁止手工编辑 |
 | `Makefile` | 混合 | 保留 GoFrame 的 `hack/hack-cli.mk` 入口，并手写环境与基础设施命令 |
@@ -233,7 +233,7 @@ gf gen pbentity
 | `internal/controller/hello/hello_new.go` | GoFrame 生成，`DO NOT EDIT` | Controller 构造代码 |
 | `internal/controller/hello/hello_v1_hello.go` | GoFrame 生成示例 | Hello 处理函数示例 |
 | `hack/hack.mk`、`hack/hack-cli.mk` | GoFrame 生成 | Makefile 公共规则 |
-| `hack/config.yaml` | 混合 | GoFrame 模板生成后，手工改为本地 MySQL 连接和代码生成配置 |
+| `hack/config.yaml.example` | 混合 | GoFrame 模板生成后，手工改为本地 MySQL 连接和代码生成配置；密码是占位符，`make dev-config` 生成本地的 `hack/config.yaml`（不提交） |
 | `manifest/config/config.yaml.example` | 手写 | 可提交的本地运行配置模板 |
 | `manifest/config/config.yaml` | 本地复制 | 从 example 复制，供本机运行；被 Git 忽略 |
 | `manifest/deploy/` | GoFrame 生成 | Kustomize/Kubernetes 模板，尚未按商城部署完善 |

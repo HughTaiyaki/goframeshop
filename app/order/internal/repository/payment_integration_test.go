@@ -23,6 +23,7 @@ import (
 	"github.com/hughtaiyaki/goframeshop/app/order/internal/dao"
 	"github.com/hughtaiyaki/goframeshop/app/order/internal/repository"
 	"github.com/hughtaiyaki/goframeshop/app/order/internal/service"
+	"github.com/hughtaiyaki/goframeshop/utility/ittest"
 )
 
 func integration(t *testing.T) context.Context {
@@ -32,7 +33,7 @@ func integration(t *testing.T) context.Context {
 	}
 	link := os.Getenv("ORDERS_IT_LINK")
 	if link == "" {
-		link = "mysql:shop:change-me@tcp(127.0.0.1:3306)/orders?loc=Local&parseTime=true"
+		link = ittest.MySQL(t, "orders")
 	}
 	if err := gdb.SetConfig(gdb.Config{"default": gdb.ConfigGroup{{Link: link, MaxOpenConnCount: 32}}}); err != nil {
 		t.Fatal(err)

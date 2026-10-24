@@ -93,7 +93,7 @@ goods 服务依赖 file 服务（挂图片、设置分类图标时会调用它�
 查看缓存：
 
 ```bash
-docker compose exec redis redis-cli -a change-me --no-auth-warning -n 1 KEYS 'goods:*'
+docker compose exec redis sh -c 'redis-cli -a "$REDIS_PASSWORD" --no-auth-warning -n 1 KEYS "goods:*"'
 ```
 
 ## 6. 踩过的坑

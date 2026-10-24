@@ -41,7 +41,7 @@ internal/dao、internal/model/{do,entity}                     gf gen dao 生成�
 ```bash
 make db-init                # 已有数据卷时手动补建；全新数据卷会自动执行
 cd app/interaction
-gf gen dao                  # 依据 hack/config.yaml 连接本地库
+gf gen dao                  # 依据 hack/config.yaml 连接本地库（make dev-config 生成）
 gf gen pb                   # 修改 .proto 之后
 ```
 

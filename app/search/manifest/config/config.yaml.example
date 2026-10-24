@@ -1,4 +1,5 @@
-# Local development template. Copy this file to config.yaml before startup.
+# Local development template. `make dev-config` copies it to config.yaml and
+# fills in the ${...} passwords from .env; then add the keys below by hand.
 grpc:
   name: "search"
   address: ":31006"
@@ -21,7 +22,7 @@ elasticsearch:
 # is created by deploy/mysql/init/007_search_sync_user.sql with SELECT only.
 database:
   goods_source:
-    link: "mysql:search_sync:change-me@tcp(127.0.0.1:3306)/goods?loc=Local&parseTime=true"
+    link: "mysql:search_sync:${SEARCH_SYNC_PASSWORD}@tcp(127.0.0.1:3306)/goods?loc=Local&parseTime=true"
 
 # The binlog stream, read with the same read-only account (it also holds
 # REPLICATION SLAVE / REPLICATION CLIENT). serverId must be unique among
@@ -29,7 +30,7 @@ database:
 binlog:
   addr: "127.0.0.1:3306"
   user: "search_sync"
-  password: "change-me"
+  password: "${SEARCH_SYNC_PASSWORD}"
   serverId: 1001
   database: "goods"
 

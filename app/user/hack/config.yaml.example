@@ -4,11 +4,11 @@
 gfcli:
   gen:
     dao:
-      - link: "mysql:shop:change-me@tcp(127.0.0.1:3306)/user?loc=Local&parseTime=true"
+      - link: "mysql:shop:${MYSQL_PASSWORD}@tcp(127.0.0.1:3306)/user?loc=Local&parseTime=true"
         descriptionTag: true
 
     pbentity:
-      - link: "mysql:shop:change-me@tcp(127.0.0.1:3306)/user?loc=Local&parseTime=true"
+      - link: "mysql:shop:${MYSQL_PASSWORD}@tcp(127.0.0.1:3306)/user?loc=Local&parseTime=true"
 
   docker:
     build: "-a amd64 -s linux -p temp -ew"

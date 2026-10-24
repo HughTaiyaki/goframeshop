@@ -23,6 +23,7 @@ import (
 	"github.com/hughtaiyaki/goframeshop/app/order/internal/repository"
 	"github.com/hughtaiyaki/goframeshop/app/order/internal/service"
 	"github.com/hughtaiyaki/goframeshop/utility/eventbus"
+	"github.com/hughtaiyaki/goframeshop/utility/ittest"
 )
 
 // settler records Settle calls; the rest of IOrder is not used.
@@ -76,7 +77,7 @@ func TestIntegrationExpiryConsumer(t *testing.T) {
 	if os.Getenv("GOFRAMESHOP_IT") != "1" {
 		t.Skip("set GOFRAMESHOP_IT=1 to run against the Compose MySQL")
 	}
-	link := "mysql:shop:change-me@tcp(127.0.0.1:3306)/orders?loc=Local&parseTime=true"
+	link := ittest.MySQL(t, "orders")
 	if err := gdb.SetConfig(gdb.Config{"default": gdb.ConfigGroup{{Link: link}}}); err != nil {
 		t.Fatal(err)
 	}

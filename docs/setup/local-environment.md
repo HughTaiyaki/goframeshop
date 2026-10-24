@@ -55,12 +55,23 @@ gf init app/user -a
 
 ## 4. 本地配置
 
-创建被 Git 忽略的运行时配置：
+**仓库里没有任何密码。** 所有本地密码只写在被 Git 忽略的 `.env` 里，Compose、`make dev-config` 和集成测试都从这里读取：
 
 ```bash
-for svc in user interaction gateway-h5 admin file goods search order paysim banner gateway-admin; do
-  cp app/$svc/manifest/config/config.yaml.example app/$svc/manifest/config/config.yaml
-done
+cp .env.example .env    # 然后把每个 change-me 换成你自己的密码
+make dev-config         # 从 .example 生成缺少的 config.yaml，填好 .env 里的密码；已有的文件不会动
+```
+
+`make dev-config` 生成两类文件，都被 Git 忽略：
+
+- `app/*/manifest/config/config.yaml`：各服务的运行配置。密码已经填好，下面的 JWT 密钥还要手工填。
+- `app/*/hack/config.yaml`：GoFrame CLI（`gf gen dao`）的配置，里面有数据库连接。
+
+`.env` 缺少某个密码时，`docker compose` 会直接报错退出，不会用一个大家都知道的默认值启动。
+
+然后生成密钥：
+
+```bash
 make jwt-keys   # 第一对：商城用户
 make jwt-keys   # 第二对：管理员
 make jwt-keys   # 第三对：订单服务的服务身份
@@ -80,7 +91,9 @@ make jwt-keys   # 第四对：支付模拟器给回调签名
 
 也可以不写进文件，启动时导出 `JWT_PRIVATE_KEY` / `JWT_PUBLIC_KEY`。
 
-提交的示例文件使用 Compose 的本地账号。生产凭据必须由部署平台的 Secret 管理能力提供。
+提交的示例文件里只有 `${MYSQL_PASSWORD}` 这样的占位符。生产凭据必须由部署平台的 Secret 管理能力提供。
+
+集成测试（`GOFRAMESHOP_IT=1`）通过 `utility/ittest` 读取 `MYSQL_PASSWORD`、`RABBITMQ_PASSWORD`：先看环境变量，没有就读仓库根目录的 `.env`。
 
 ## 5. 启动 MySQL 和 etcd
 
@@ -97,9 +110,9 @@ make infra-ps
 - MySQL 8.4.11：`127.0.0.1:3306`
 - etcd 3.6.1 客户端端点：`127.0.0.1:2379`
 - Elasticsearch 8.11.0（带 IK）：`127.0.0.1:9200`。镜像在第一次 `make infra-up` 时由 `deploy/elasticsearch/Dockerfile` 构建，需要联网下载 IK 插件，并校验 sha256。没有开启安全认证，只用于本地开发。本机设置了 HTTP 代理时，curl 访问它要加 `--noproxy '*'`。Kibana 是可选的：`docker compose --profile tools up -d kibana`，访问 `127.0.0.1:5601`。
-- Redis 7.4.2：`127.0.0.1:6379`，密码默认 `change-me`（可用 `REDIS_PASSWORD` 覆盖）。只做缓存：不持久化，`/data` 是 tmpfs，容器重启后一定是空的。
+- Redis 7.4.2：`127.0.0.1:6379`，密码是 `.env` 里的 `REDIS_PASSWORD`。只做缓存：不持久化，`/data` 是 tmpfs，容器重启后一定是空的。
 - OpenTelemetry Collector 0.130.0：OTLP gRPC `127.0.0.1:4317`、HTTP `127.0.0.1:4318`，配置在 `deploy/otel/collector.yaml`。Jaeger 2.11.0：界面 <http://127.0.0.1:16686>，数据只在内存里，重启清空。两者都没有登录，只用于本地。每个服务的配置需要 `otel.endpoint`，见 [`development/tracing.md`](../development/tracing.md#3-数据怎么走)；留空则不追踪。
-- RabbitMQ 4.2.0：`127.0.0.1:5672`，管理界面 <http://127.0.0.1:15672>，账号默认 `shop` / `change-me`（可用 `RABBITMQ_USER`、`RABBITMQ_PASSWORD` 覆盖，只用于本地）。数据在 `rabbitmq-data` 卷里；就算丢了也不会丢事件，事件的记录在各服务的 `outbox_event` 表里。order、goods、banner 的配置需要 `rabbitmq.url`，见 [`development/events.md`](../development/events.md#6-本地运行)。
+- RabbitMQ 4.2.0：`127.0.0.1:5672`，管理界面 <http://127.0.0.1:15672>，账号是 `.env` 里的 `RABBITMQ_USER` / `RABBITMQ_PASSWORD`。数据在 `rabbitmq-data` 卷里；就算丢了也不会丢事件，事件的记录在各服务的 `outbox_event` 表里。order、goods、banner 的配置需要 `rabbitmq.url`，见 [`development/events.md`](../development/events.md#6-本地运行)。
 
 MySQL 第一次启动时会按文件名顺序执行 `deploy/mysql/init/` 下的脚本（`001_user_schema.sql` 到 `013_event_trace_schema.sql`；其中 006、011、012、013 是对已有数据也安全的迁移；010 建的是支付模拟器自己的库 `paysim`；012 在 orders、goods、banner 里各建一套事件表）。命名数据卷会在容器停止后继续保留数据。
 

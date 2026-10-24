@@ -170,12 +170,12 @@ order、goods、banner 的配置里加上：
 
 ```yaml
 rabbitmq:
-  url: "amqp://shop:change-me@127.0.0.1:5672/"   # 也可以用环境变量 RABBITMQ_URL
+  url: "amqp://shop:${RABBITMQ_PASSWORD}@127.0.0.1:5672/"   # make dev-config 从 .env 填入；也可以用环境变量 RABBITMQ_URL
 outbox:
   interval: "500ms"   # order、goods：Relay 多久看一次
 ```
 
-管理界面：<http://127.0.0.1:15672>（本地账号 `shop` / `change-me`），能看到每个队列里有多少消息。
+管理界面：<http://127.0.0.1:15672>（账号 `shop`，密码是 `.env` 里的 `RABBITMQ_PASSWORD`），能看到每个队列里有多少消息。
 
 ### 故障演练
 

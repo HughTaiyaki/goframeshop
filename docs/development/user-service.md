@@ -17,7 +17,7 @@ docker compose ps
 
 ## 2. 已生成的持久化模型
 
-CLI 配置位于 `app/user/hack/config.yaml`，连接本地 Compose 中的 MySQL。
+CLI 配置位于 `app/user/hack/config.yaml`，连接本地 Compose 中的 MySQL。它含有数据库密码，所以不提交：用 `make dev-config` 从 `hack/config.yaml.example` 生成。
 
 以下命令已经针对 MySQL 8.4.11 成功执行：
 

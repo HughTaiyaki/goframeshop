@@ -26,6 +26,7 @@ import (
 	providerlogic "github.com/hughtaiyaki/goframeshop/app/paysim/internal/logic/provider"
 	"github.com/hughtaiyaki/goframeshop/app/paysim/internal/repository"
 	"github.com/hughtaiyaki/goframeshop/app/paysim/internal/service"
+	"github.com/hughtaiyaki/goframeshop/utility/ittest"
 )
 
 func integration(t *testing.T) (context.Context, string) {
@@ -35,7 +36,7 @@ func integration(t *testing.T) (context.Context, string) {
 	}
 	link := os.Getenv("PAYSIM_IT_LINK")
 	if link == "" {
-		link = "mysql:shop:change-me@tcp(127.0.0.1:3306)/paysim?loc=Local&parseTime=true"
+		link = ittest.MySQL(t, "paysim")
 	}
 	if err := gdb.SetConfig(gdb.Config{"default": gdb.ConfigGroup{{Link: link, MaxOpenConnCount: 64}}}); err != nil {
 		t.Fatal(err)

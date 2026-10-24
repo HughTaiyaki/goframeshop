@@ -1,4 +1,5 @@
-# Local development template. Copy this file to config.yaml before startup.
+# Local development template. `make dev-config` copies it to config.yaml and
+# fills in the ${...} passwords from .env; then add the keys below by hand.
 grpc:
   name: "order"
   address: ":31007"
@@ -9,7 +10,7 @@ logger:
 
 database:
   default:
-    link: "mysql:shop:change-me@tcp(127.0.0.1:3306)/orders?loc=Local&parseTime=true"
+    link: "mysql:shop:${MYSQL_PASSWORD}@tcp(127.0.0.1:3306)/orders?loc=Local&parseTime=true"
 
 etcd:
   address: "127.0.0.1:2379"
@@ -27,7 +28,7 @@ order:
 # consumer closes orders when their delayed message arrives.
 # May also come from RABBITMQ_URL.
 rabbitmq:
-  url: "amqp://shop:change-me@127.0.0.1:5672/"
+  url: "amqp://shop:${RABBITMQ_PASSWORD}@127.0.0.1:5672/"
 outbox:
   interval: "500ms"         # how often the relay looks for unsent events
 

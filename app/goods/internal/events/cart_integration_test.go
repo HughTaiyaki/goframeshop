@@ -28,6 +28,7 @@ import (
 	"github.com/hughtaiyaki/goframeshop/app/goods/internal/repository"
 	"github.com/hughtaiyaki/goframeshop/app/goods/internal/service"
 	"github.com/hughtaiyaki/goframeshop/utility/eventbus"
+	"github.com/hughtaiyaki/goframeshop/utility/ittest"
 )
 
 func integration(t *testing.T) (context.Context, uint64) {
@@ -35,7 +36,7 @@ func integration(t *testing.T) (context.Context, uint64) {
 	if os.Getenv("GOFRAMESHOP_IT") != "1" {
 		t.Skip("set GOFRAMESHOP_IT=1 to run against the Compose MySQL")
 	}
-	link := "mysql:shop:change-me@tcp(127.0.0.1:3306)/goods?loc=Local&parseTime=true"
+	link := ittest.MySQL(t, "goods")
 	if err := gdb.SetConfig(gdb.Config{"default": gdb.ConfigGroup{{Link: link, MaxOpenConnCount: 32}}}); err != nil {
 		t.Fatal(err)
 	}

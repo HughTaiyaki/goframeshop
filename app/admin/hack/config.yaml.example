@@ -3,11 +3,11 @@
 gfcli:
   gen:
     dao:
-      - link: "mysql:shop:change-me@tcp(127.0.0.1:3306)/interaction?loc=Local&parseTime=true"
+      - link: "mysql:shop:${MYSQL_PASSWORD}@tcp(127.0.0.1:3306)/admin?loc=Local&parseTime=true"
         descriptionTag: true
     # No pbentity: database rows are never part of the public API here.
 
   docker:
     build: "-a amd64 -s linux -p temp -ew"
     tagPrefixes:
-      - local/goframeshop-interaction
+      - local/goframeshop-admin

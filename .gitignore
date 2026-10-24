@@ -17,6 +17,9 @@ temp/
 temp.yaml
 bin
 **/config/config.yaml
+# GoFrame CLI configs hold the database link: copy hack/config.yaml.example
+# (make dev-config does it with the password from .env).
+**/hack/config.yaml
 .env
 .env.local
 

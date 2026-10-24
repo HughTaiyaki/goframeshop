@@ -48,6 +48,8 @@
 
 ```bash
 make env-check
+cp .env.example .env   # 首次：填入自己的密码
+make dev-config        # 首次：生成被忽略的 config.yaml
 make infra-up
 make infra-ps
 make db-init     # 已有数据卷时补执行建表脚本
@@ -99,9 +101,10 @@ GOFRAMESHOP_IT=1 go test ./app/goods/internal/repository/ ./app/search/internal/
 
 ## 配置约束
 
-- 只提交 `*.example` 配置文件。
+- 只提交 `*.example` 配置文件。任何密码（包括本地开发用的）都不得写进被提交的文件：只写在被忽略的 `.env` 里，示例文件用 `${MYSQL_PASSWORD}` 这样的占位符，`make dev-config` 负责填入；集成测试用 `utility/ittest` 读取。
+- `app/*/hack/config.yaml`（GoFrame CLI 配置）含数据库连接，同样不提交，只提交 `hack/config.yaml.example`。
 - 本地 `config.yaml` 和 `.env` 文件由 Git 忽略。
-- Compose 默认值只面向本地开发，不能作为生产默认值。
+- Compose 不为密码提供默认值，缺少时直接报错。
 - 不通过本仓库修改 Docker 的全局公共镜像源配置。
 
 ## 完成前验证

@@ -3,11 +3,13 @@
 gfcli:
   gen:
     dao:
-      - link: "mysql:shop:change-me@tcp(127.0.0.1:3306)/admin?loc=Local&parseTime=true"
+      - link: "mysql:shop:${MYSQL_PASSWORD}@tcp(127.0.0.1:3306)/goods?loc=Local&parseTime=true"
         descriptionTag: true
+        # Owned by utility/eventbus, which reads and writes them by name.
+        tablesEx: "outbox_event,inbox_event,quarantine_event"
     # No pbentity: database rows are never part of the public API here.
 
   docker:
     build: "-a amd64 -s linux -p temp -ew"
     tagPrefixes:
-      - local/goframeshop-admin
+      - local/goframeshop-goods

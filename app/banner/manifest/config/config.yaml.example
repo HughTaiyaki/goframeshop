@@ -1,4 +1,5 @@
-# Local development template. Copy this file to config.yaml before startup.
+# Local development template. `make dev-config` copies it to config.yaml and
+# fills in the ${...} passwords from .env; then add the keys below by hand.
 grpc:
   name: "banner"
   address: ":31008"   # the tutorial's :31006 is taken by the search service
@@ -9,7 +10,7 @@ logger:
 
 database:
   default:
-    link: "mysql:shop:change-me@tcp(127.0.0.1:3306)/banner?loc=Local&parseTime=true"
+    link: "mysql:shop:${MYSQL_PASSWORD}@tcp(127.0.0.1:3306)/banner?loc=Local&parseTime=true"
 
 etcd:
   address: "127.0.0.1:2379"
@@ -25,7 +26,7 @@ jwt:
 # goods.changed events keep the hand-picked slots up to date (design §8).
 # May also come from RABBITMQ_URL.
 rabbitmq:
-  url: "amqp://shop:change-me@127.0.0.1:5672/"
+  url: "amqp://shop:${RABBITMQ_PASSWORD}@127.0.0.1:5672/"
 
 # Tracing (design §9): spans go to the OpenTelemetry Collector, which
 # forwards them to Jaeger (UI: http://127.0.0.1:16686). Leave endpoint empty

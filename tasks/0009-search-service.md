@@ -7,7 +7,7 @@
 | 类别 | 内容 |
 | --- | --- |
 | 基础设施 | Compose 新增 `elasticsearch`：用 `deploy/elasticsearch/Dockerfile` 在 8.11.0 镜像里装好 IK 插件，插件下载锁定 sha256。`kibana` 放在 `tools` profile 里，默认不启动，界面为中文 |
-| 账号 | `007_search_sync_user.sql`：`search_sync` 账号，只有 SELECT goods 库和读取 binlog 的权限 |
+| 账号 | `007_search_sync_user.sh`（原为 `.sql`，密码改为从 `.env` 读取）：`search_sync` 账号，只有 SELECT goods 库和读取 binlog 的权限 |
 | 进程 | `app/search`（gRPC `:31006`）：不持有任何密钥，只有公开方法 |
 | 前台 HTTP | `GET /frontend/search/goods`：支持关键词、分类、品牌、价格区间、5 种排序，结果带高亮 |
 | 共享代码 | `utility.UnaryServerAuth(nil, ...)`：没有受保护方法的服务可以不配置公钥 |

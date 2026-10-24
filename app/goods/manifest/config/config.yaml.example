@@ -1,4 +1,5 @@
-# Local development template. Copy this file to config.yaml before startup.
+# Local development template. `make dev-config` copies it to config.yaml and
+# fills in the ${...} passwords from .env; then add the keys below by hand.
 grpc:
   name: "goods"
   address: ":31005"
@@ -9,7 +10,7 @@ logger:
 
 database:
   default:
-    link: "mysql:shop:change-me@tcp(127.0.0.1:3306)/goods?loc=Local&parseTime=true"
+    link: "mysql:shop:${MYSQL_PASSWORD}@tcp(127.0.0.1:3306)/goods?loc=Local&parseTime=true"
 
 # Read cache. Remove this section to run without a cache. If Redis is
 # configured but down, the service still starts and reads go to MySQL.
@@ -17,7 +18,7 @@ redis:
   default:
     address: "127.0.0.1:6379"
     db: 1                       # keep the goods cache apart from other users
-    pass: "change-me"   # the Compose default; local development only
+    pass: "${REDIS_PASSWORD}"   # from .env; `make dev-config` fills it in
     dialTimeout: "1s"
     readTimeout: "1s"
     writeTimeout: "1s"
@@ -53,7 +54,7 @@ jwtUser:
 # and the relay publishes them; order.placed is consumed to take ordered goods
 # out of the cart. May also come from RABBITMQ_URL.
 rabbitmq:
-  url: "amqp://shop:change-me@127.0.0.1:5672/"
+  url: "amqp://shop:${RABBITMQ_PASSWORD}@127.0.0.1:5672/"
 outbox:
   interval: "500ms"
 

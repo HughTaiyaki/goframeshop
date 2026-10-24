@@ -30,10 +30,9 @@ import (
 	oteltrace "go.opentelemetry.io/otel/trace"
 
 	"github.com/hughtaiyaki/goframeshop/utility/eventbus"
+	"github.com/hughtaiyaki/goframeshop/utility/ittest"
 	"github.com/hughtaiyaki/goframeshop/utility/rabbitmq"
 )
-
-const defaultURL = "amqp://shop:change-me@127.0.0.1:5672/"
 
 type env struct {
 	ctx context.Context
@@ -48,7 +47,7 @@ func setup(t *testing.T) *env {
 	if os.Getenv("GOFRAMESHOP_IT") != "1" {
 		t.Skip("set GOFRAMESHOP_IT=1 to run against the Compose MySQL and RabbitMQ")
 	}
-	link := "mysql:shop:change-me@tcp(127.0.0.1:3306)/orders?loc=Local&parseTime=true"
+	link := ittest.MySQL(t, "orders")
 	if err := gdb.SetConfig(gdb.Config{"default": gdb.ConfigGroup{{Link: link, MaxOpenConnCount: 32}}}); err != nil {
 		t.Fatal(err)
 	}
@@ -58,7 +57,7 @@ func setup(t *testing.T) *env {
 	}
 	url := os.Getenv("RABBITMQ_URL")
 	if url == "" {
-		url = defaultURL
+		url = ittest.RabbitMQ(t)
 	}
 	conn, err := amqp.Dial(url)
 	if err != nil {

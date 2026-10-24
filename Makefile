@@ -15,11 +15,20 @@ infra-down:
 # Applies every init script to a running MySQL. The scripts are idempotent, so
 # this is how an existing volume picks up a newly added schema without the data
 # loss of infra-reset.
+# Creates missing local configs from the .example files, with the passwords
+# from .env. Never overwrites a file that exists.
+.PHONY: dev-config
+dev-config:
+	@./scripts/dev-config.sh
+
 .PHONY: db-init
 db-init:
-	@for f in deploy/mysql/init/*.sql; do \
+	@for f in deploy/mysql/init/*.sql deploy/mysql/init/*.sh; do echo "$$f"; done | sort | while read -r f; do \
 		echo "applying $$f"; \
-		docker compose exec -T mysql sh -c 'mysql -uroot -p"$$MYSQL_ROOT_PASSWORD"' < "$$f" || exit 1; \
+		case "$$f" in \
+		*.sql) docker compose exec -T mysql sh -c 'mysql -uroot -p"$$MYSQL_ROOT_PASSWORD"' < "$$f" || exit 1 ;; \
+		*.sh)  docker compose exec -T mysql sh -s < "$$f" || exit 1 ;; \
+		esac; \
 	done
 
 .PHONY: infra-reset
