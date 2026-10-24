@@ -29,6 +29,9 @@ func (s *sOrder) Ship(ctx context.Context, orderNo string, in service.Shipment) 
 		return nil, err
 	}
 	if order.Status == service.StatusPaid {
+		if err := s.shippable(ctx, order); err != nil {
+			return nil, err
+		}
 		now := s.now()
 		deadline := now.Add(s.timing.AutoConfirm)
 		changed, err := s.orders.Transition(ctx, order.ID, service.Change{
@@ -51,6 +54,31 @@ func (s *sOrder) Ship(ctx context.Context, orderNo string, in service.Shipment) 
 		return nil, service.ErrFailedPrecondition
 	}
 	return order, nil
+}
+
+// shippable refuses to ship while an after-sale request waits for review
+// (the shopper may not want the goods any more: decide first), or when every
+// goods line has been approved for refund (nothing left to send). Task 0018.
+func (s *sOrder) shippable(ctx context.Context, order *service.Order) error {
+	refunds, err := s.refunds.ByOrder(ctx, order.ID)
+	if err != nil {
+		return err
+	}
+	refunded := map[uint64]bool{}
+	for _, r := range refunds {
+		switch r.Status {
+		case service.RefundPending:
+			return service.ErrFailedPrecondition
+		case service.RefundApproved, service.RefundRefunded:
+			refunded[r.GoodsID] = true
+		}
+	}
+	for _, item := range order.Items {
+		if !refunded[item.GoodsID] {
+			return nil
+		}
+	}
+	return service.ErrFailedPrecondition
 }
 
 // ConfirmReceipt lets the shopper complete their own shipped order. Racing

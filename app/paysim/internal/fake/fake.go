@@ -14,11 +14,11 @@ import (
 type Repository struct {
 	mu       sync.Mutex
 	payments map[string]service.Payment
-	refunds  map[string]service.Refund // by payment id
+	refunds  map[string][]service.Refund // by payment id, oldest first
 }
 
 func New() *Repository {
-	return &Repository{payments: map[string]service.Payment{}, refunds: map[string]service.Refund{}}
+	return &Repository{payments: map[string]service.Payment{}, refunds: map[string][]service.Refund{}}
 }
 
 func (r *Repository) Update(_ context.Context, paymentID string, decide service.Decide) (*service.Payment, error) {
@@ -28,21 +28,25 @@ func (r *Repository) Update(_ context.Context, paymentID string, decide service.
 	if p, ok := r.payments[paymentID]; ok {
 		current = &p
 	}
-	var refund *service.Refund
-	if x, ok := r.refunds[paymentID]; ok {
-		refund = &x
+	var refunds []*service.Refund
+	for _, x := range r.refunds[paymentID] {
+		x := x
+		refunds = append(refunds, &x)
 	}
-	write, err := decide(current, refund)
+	write, err := decide(current, refunds)
 	if err != nil {
 		return nil, err
 	}
 	if write.Refund != nil {
-		for _, existing := range r.refunds {
-			if existing.ID == write.Refund.ID {
-				return nil, service.ErrConflict
+		// refund_id is the primary key: taken by any payment is a conflict.
+		for _, all := range r.refunds {
+			for _, existing := range all {
+				if existing.ID == write.Refund.ID {
+					return nil, service.ErrConflict
+				}
 			}
 		}
-		r.refunds[paymentID] = *write.Refund
+		r.refunds[paymentID] = append(r.refunds[paymentID], *write.Refund)
 	}
 	if write.Payment == nil {
 		return current, nil

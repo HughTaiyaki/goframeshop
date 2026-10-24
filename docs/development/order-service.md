@@ -1,6 +1,6 @@
 # order 订单服务开发
 
-`app/order` 负责下单、支付、取消、超时关单、发货与收货、订单查询和售后申请。它是一个 gRPC 服务，监听 `:31007`，使用 `orders` 库。任务、决定和验收见 [`tasks/0010-order-service.md`](../../tasks/0010-order-service.md)；支付部分见 [`payment.md`](payment.md) 和 [`tasks/0012-payment-simulator.md`](../../tasks/0012-payment-simulator.md)。
+`app/order` 负责下单、支付、取消、超时关单、发货与收货、订单查询、售后申请与审批。它是一个 gRPC 服务，监听 `:31007`，使用 `orders` 库。任务、决定和验收见 [`tasks/0010-order-service.md`](../../tasks/0010-order-service.md)；支付部分见 [`payment.md`](payment.md) 和 [`tasks/0012-payment-simulator.md`](../../tasks/0012-payment-simulator.md)。
 
 本文先用一次下单把整个过程讲清楚，再说明规则和运维方法。
 
@@ -96,6 +96,7 @@ UPDATE order_info SET status='CLOSING', close_reason=... WHERE id=? AND status I
 | `SHIPPED`，已过 `confirm_deadline` | 改为 `COMPLETED`（`AUTO_CONFIRMED`） |
 | `CLOSING` | 先请支付模拟器关闭支付单，再释放库存（见 [`payment.md` 规则五](payment.md#规则五关单先处理支付再还库存)） |
 | 没完成的技术退款 | 用同一个退款单号重试 |
+| 已同意、还没退成功的售后（`APPROVED`） | 用同一个退款单号 `AS<售后单号>` 重试 |
 
 因为每一步都满足上面两个保证，同时运行多个订单服务实例也是安全的。
 
@@ -108,7 +109,7 @@ UPDATE order_info SET status='CLOSING', close_reason=... WHERE id=? AND status I
 | 接口 | 谁能调 | 经过哪个网关 |
 | --- | --- | --- |
 | 下单、取消、去支付、我的订单（列表、详情）、确认收货、申请售后、我的售后（列表、详情） | 商城用户令牌 | gateway-h5：`/frontend/order*`、`/frontend/refund*` |
-| 全部订单（列表、详情）、发货、全部售后 | 管理员令牌 | gateway-admin：`/backend/order*`、`/backend/refund` |
+| 全部订单（列表、详情）、发货、全部售后、同意或拒绝售后 | 管理员令牌 | gateway-admin：`/backend/order*`、`/backend/refund` |
 | 支付结果通知 `NotifyPayment` | 不需要令牌，靠支付模拟器的签名 | gateway-h5：`/frontend/payment/notify` |
 
 - 用户令牌调用管理员接口返回 `PermissionDenied`（`code:7`），反过来也一样。没有令牌返回 `Unauthenticated`（`code:16`）。
@@ -146,8 +147,20 @@ goods 的权限规则因此变成：
 
 ## 6. 售后
 
-- 顾客只能对**自己的、已付款的**订单申请（`PAID`、`SHIPPED`、`COMPLETED`）；商品必须在这个订单里；同一订单的同一件商品只能申请一次。其他状态的订单返回 `code:9`。
-- 售后的审批（同意、拒绝）和按商品退款还没做；目前只有系统自动发起的整单技术退款（见 [`payment.md`](payment.md)）。
+任务见 [`tasks/0018-after-sale-refunds.md`](../../tasks/0018-after-sale-refunds.md)。
+
+```text
+顾客申请 ──▶ PENDING ──后台同意──▶ APPROVED ──模拟器退款成功──▶ REFUNDED
+                │                     └─ 没有响应：恢复任务用同一个退款单号继续退
+                └──后台拒绝（必须写原因）──▶ REJECTED
+```
+
+- **申请**：只能对**自己的、已付款的**订单（`PAID`、`SHIPPED`，或完成不超过 `order.afterSaleWindow`（默认 7 天）的 `COMPLETED`）；商品必须在订单里；一件商品只能申请一次。金额是这件商品的小计，申请时由服务端写入。
+- **同意**（`POST /backend/refund/approve`）：条件 UPDATE `PENDING → APPROVED`，提交后在事务外调模拟器退款，退款单号 `AS<售后单号>`。成功就 `REFUNDED`；失败 `attempts + 1`，留给恢复任务。已同意、已退款时再同意直接返回。
+- **拒绝**（`POST /backend/refund/reject`）：条件 UPDATE `PENDING → REJECTED`，原因 1–255 字，顾客能看到。
+- 同意和拒绝同时发生时只有一方改到行，另一方返回 `code:9`。
+- **和发货的关系**：有 `PENDING` 售后时不能发货；所有商品都已同意退款时也不能发货。已经发货的订单可以照常申请售后（退货物流不在范围内）。
+- 订单状态不会因为退款而改变：订单和售后分开展示。退款后的库存不会自动回到可售。
 
 ## 7. 本地运行
 

@@ -69,9 +69,10 @@ type Write struct {
 	Refund  *Refund
 }
 
-// Decide looks at a payment (nil when it does not exist) and its refund (nil
-// when none) and says what to write.
-type Decide func(current *Payment, refund *Refund) (Write, error)
+// Decide looks at a payment (nil when it does not exist) and its refunds
+// (oldest first; several partial ones since task 0018) and says what to
+// write: at most one new refund per decision.
+type Decide func(current *Payment, refunds []*Refund) (Write, error)
 
 // Repository persists payments. Update is the only way to change one: it
 // locks the payment row, calls decide and applies its Write in the same

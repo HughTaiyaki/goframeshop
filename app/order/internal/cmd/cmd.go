@@ -60,19 +60,24 @@ var (
 			interval := g.Cfg().MustGet(ctx, "order.recoveryInterval", "5s").Duration()
 
 			orderRepo := repository.NewOrder()
+			refundRepo := repository.NewRefund(orderRepo)
 			token := utility.NewServiceToken(serviceKey)
+			provider := clients.NewProvider(token)
 			orders := orderlogic.New(orderlogic.Deps{
 				Orders:    orderRepo,
 				Payments:  repository.NewPayment(),
+				Refunds:   refundRepo,
 				Catalog:   clients.NewCatalog(),
 				Addresses: clients.NewAddresses(),
 				Inventory: clients.NewInventory(token),
-				Provider:  clients.NewProvider(token),
+				Provider:  provider,
 				Notices:   notices,
 				Timing:    timing,
 				Now:       time.Now,
 			})
-			refunds := refundlogic.New(repository.NewRefund(orderRepo), orderRepo, time.Now)
+			refunds := refundlogic.New(refundRepo, orderRepo, provider, service.RefundSettings{
+				AfterSaleWindow: g.Cfg().MustGet(ctx, "order.afterSaleWindow", "168h").Duration(),
+			}, time.Now)
 
 			// Events: the relay publishes the outbox, the consumer closes
 			// orders when their delayed expiry message arrives.
@@ -89,18 +94,18 @@ var (
 			go rabbitmq.Consume(ctx, amqpURL, rabbitmq.QueueOrderExpiry, 16,
 				events.NewExpiry(dao.OrderInfo.DB(), orders, time.Now).Handle)
 
-			go runRecovery(ctx, orders, interval)
+			go runRecovery(ctx, orders, refunds, interval)
 			newServer(userKey, adminKey, orders, refunds).Run()
 			return nil
 		},
 	}
 )
 
-// runRecovery drives stuck and expired orders forward and retries technical
-// refunds. Expired orders normally close on their expiry message; this scan
+// runRecovery drives stuck and expired orders forward, retries technical
+// refunds, and pays back approved after-sale requests still unpaid. Expired orders normally close on their expiry message; this scan
 // is the guarantee when a message is late or lost. It is safe to run in several instances at once: every state change
 // is conditional and every inventory and provider call idempotent.
-func runRecovery(ctx context.Context, orders service.IOrder, interval time.Duration) {
+func runRecovery(ctx context.Context, orders service.IOrder, refunds service.IRefund, interval time.Duration) {
 	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
 	for {
@@ -110,6 +115,9 @@ func runRecovery(ctx context.Context, orders service.IOrder, interval time.Durat
 		case <-ticker.C:
 			if err := orders.Recover(ctx); err != nil {
 				g.Log().Warningf(ctx, "order recovery pass failed: %v", err)
+			}
+			if err := refunds.Retry(ctx); err != nil {
+				g.Log().Warningf(ctx, "after-sale refund pass failed: %v", err)
 			}
 		}
 	}
@@ -138,6 +146,8 @@ var (
 		orderv1.OrderService_GetOrder_FullMethodName,
 		orderv1.OrderService_ShipOrder_FullMethodName,
 		refundv1.RefundService_ListRefunds_FullMethodName,
+		refundv1.RefundService_ApproveRefund_FullMethodName,
+		refundv1.RefundService_RejectRefund_FullMethodName,
 	}
 )
 

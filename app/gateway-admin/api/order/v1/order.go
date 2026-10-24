@@ -29,7 +29,7 @@ type OrderDetailRes struct {
 
 type RefundListReq struct {
 	g.Meta `path:"/refund" method:"get" tags:"售后" summary:"售后申请列表"`
-	Status string `json:"status" v:"in:,PENDING,APPROVED,REJECTED" dc:"状态"`
+	Status string `json:"status" v:"in:,PENDING,APPROVED,REJECTED,REFUNDED" dc:"状态"`
 	Page   uint32 `json:"page"   v:"min:1"  d:"1"  dc:"页码"`
 	Size   uint32 `json:"size"   v:"max:50" d:"10" dc:"每页条数"`
 }
@@ -43,4 +43,24 @@ type OrderShipReq struct {
 
 type OrderShipRes struct {
 	*OrderView
+}
+
+type RefundApproveReq struct {
+	g.Meta   `path:"/refund/approve" method:"post" tags:"售后" summary:"同意售后并退款（退这件商品的小计；已同意或已退款时直接返回）"`
+	RefundNo string `json:"refundNo" v:"required|length:1,32" dc:"售后单号"`
+	Note     string `json:"note"     v:"length:0,255"         dc:"审批意见，可以不填"`
+}
+
+type RefundApproveRes struct {
+	*RefundView
+}
+
+type RefundRejectReq struct {
+	g.Meta   `path:"/refund/reject" method:"post" tags:"售后" summary:"拒绝售后（必须写原因，顾客能看到）"`
+	RefundNo string `json:"refundNo" v:"required|length:1,32"  dc:"售后单号"`
+	Note     string `json:"note"     v:"required|length:1,255" dc:"拒绝原因"`
+}
+
+type RefundRejectRes struct {
+	*RefundView
 }

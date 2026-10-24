@@ -119,10 +119,18 @@ const (
 
 // Refund states.
 const (
-	RefundPending  = "PENDING"
+	RefundPending = "PENDING"
+	// RefundApproved: approved; the money is being paid back.
 	RefundApproved = "APPROVED"
 	RefundRejected = "REJECTED"
+	// RefundRefunded: the provider confirmed the money is back.
+	RefundRefunded = "REFUNDED"
 )
+
+// AfterSaleRefundID is the provider refund of an approved after-sale
+// request. Fixed per request, so approving twice, retrying and the worker all
+// make the same refund, and the provider pays it at most once.
+func AfterSaleRefundID(refundNo string) string { return "AS" + refundNo }
 
 // Limits.
 const (
@@ -276,6 +284,23 @@ type Refund struct {
 	Reason    string
 	Status    string
 	CreatedAt time.Time
+	// AmountCents is the goods line's subtotal, set when the request is made.
+	AmountCents uint64
+	GoodsName   string
+	ReviewNote  string
+	ReviewedAt  *time.Time
+	RefundedAt  *time.Time
+	Attempts    int
+}
+
+// RefundChange is a conditional change of an after-sale request, applied
+// only while it is still From.
+type RefundChange struct {
+	From       string
+	To         string
+	ReviewNote *string
+	ReviewedAt *time.Time
+	RefundedAt *time.Time
 }
 
 // IOrder is the order application service.
@@ -320,4 +345,19 @@ type IRefund interface {
 	GetMine(ctx context.Context, userID uint64, refundNo string) (*Refund, error)
 	ListMine(ctx context.Context, userID uint64, page, size int) ([]*Refund, int, error)
 	List(ctx context.Context, status string, page, size int) ([]*Refund, int, error)
+	// Approve (administrators) approves a PENDING request and pays the
+	// amount back. Without an answer from the provider it stays APPROVED and
+	// Retry pays it later.
+	Approve(ctx context.Context, refundNo, note string) (*Refund, error)
+	// Reject (administrators) rejects a PENDING request; note is required.
+	Reject(ctx context.Context, refundNo, note string) (*Refund, error)
+	// Retry pays back APPROVED requests whose refund has no answer yet. The
+	// recovery worker calls it on a timer.
+	Retry(ctx context.Context) error
+}
+
+// RefundSettings, from config.
+type RefundSettings struct {
+	// AfterSaleWindow: how long after completion a request can still be made.
+	AfterSaleWindow time.Duration
 }

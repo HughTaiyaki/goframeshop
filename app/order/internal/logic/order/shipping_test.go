@@ -178,3 +178,44 @@ func TestConfirmAndAutoConfirmRace(t *testing.T) {
 		}
 	}
 }
+
+func TestAfterSaleRequestsHoldShipping(t *testing.T) {
+	ctx := context.Background()
+	f := newFixture()
+	o := paidOrder(t, f, "r1") // goods 1 and 2
+	got := f.status(t, o.No)
+	request := &service.Refund{ID: 1, OrderID: got.ID, GoodsID: 1, Status: service.RefundPending}
+	f.refunds.rows = []*service.Refund{request}
+
+	// Waiting for review: decide first, then ship.
+	if _, err := f.svc.Ship(ctx, o.No, sf); !errors.Is(err, service.ErrFailedPrecondition) {
+		t.Fatalf("ship with a pending request: err = %v", err)
+	}
+	// Rejected: ship everything.
+	request.Status = service.RefundRejected
+	if shipped, err := f.svc.Ship(ctx, o.No, sf); err != nil || shipped.Status != service.StatusShipped {
+		t.Fatalf("ship after a rejection: %+v %v", shipped, err)
+	}
+
+	// One line refunded: the other still ships.
+	partial := paidOrder(t, f, "r2")
+	pid := f.status(t, partial.No).ID
+	f.refunds.rows = []*service.Refund{{ID: 2, OrderID: pid, GoodsID: 1, Status: service.RefundRefunded}}
+	if _, err := f.svc.Ship(ctx, partial.No, service.Shipment{Carrier: "顺丰", TrackingNo: "SF2"}); err != nil {
+		t.Fatalf("ship the remaining line: %v", err)
+	}
+
+	// Every line approved or refunded: nothing left to send.
+	all := paidOrder(t, f, "r3")
+	aid := f.status(t, all.No).ID
+	f.refunds.rows = []*service.Refund{
+		{ID: 3, OrderID: aid, GoodsID: 1, Status: service.RefundRefunded},
+		{ID: 4, OrderID: aid, GoodsID: 2, Status: service.RefundApproved},
+	}
+	if _, err := f.svc.Ship(ctx, all.No, service.Shipment{Carrier: "顺丰", TrackingNo: "SF3"}); !errors.Is(err, service.ErrFailedPrecondition) {
+		t.Fatalf("ship a fully refunded order: err = %v", err)
+	}
+	if got := f.status(t, all.No); got.Status != service.StatusPaid {
+		t.Fatalf("status %s", got.Status)
+	}
+}

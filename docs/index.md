@@ -21,14 +21,16 @@
 - `app/goods`（gRPC `:31005`，库 `goods`，Redis 缓存）：商品、商品图片、三级分类、热门推荐（`sort` 权重）、购物车（只接受商城用户令牌）。读接口公开，经 gateway-h5 开放给顾客；写接口只接受管理员令牌，经 gateway-admin 开放。商品详情和分类树走 Redis 缓存（缓存旁路，写后删除，删除失败时后台重试）。
 - 库存账本（goods 服务内）：预留、提交、释放，幂等、全有或全无、并发安全；商品可以上下架，新商品默认下架。
 - `app/search`（gRPC `:31006`）：Elasticsearch + IK 中文分词的商品搜索，经 gateway-h5 公开。启动时全量重建索引，之后通过 binlog 跟随变化。
-- `app/order`（gRPC `:31007`，库 `orders`）：下单（服务端算价、地址快照、幂等）、预留库存、支付（验签回调、提交库存、晚到付款自动退款）、取消与超时关单（先关支付单再释放库存）、发货与确认收货（到期自动确认）、订单查询、售后申请。用**自己的服务身份**（第三对密钥）调用库存接口和支付模拟器。
-- `app/paysim`（gRPC `:31009` + HTTP `:8399`，库 `paysim`）：支付模拟器，代替外部支付渠道。付款与关单在同一行事务里裁定；付款后带签名回调（第四对密钥），失败按退避重试。
+- `app/order`（gRPC `:31007`，库 `orders`）：下单（服务端算价、地址快照、幂等）、预留库存、支付（验签回调、提交库存、晚到付款自动退款）、取消与超时关单（先关支付单再释放库存）、发货与确认收货（到期自动确认）、订单查询、售后申请与审批（按商品退款）。用**自己的服务身份**（第三对密钥）调用库存接口和支付模拟器。
+- `app/paysim`（gRPC `:31009` + HTTP `:8399`，库 `paysim`）：支付模拟器，代替外部支付渠道。付款与关单在同一行事务里裁定；付款后带签名回调（第四对密钥），失败按退避重试；支持部分退款。
 - `app/banner`（gRPC `:31008`，库 `banner`）：首页轮播图和手工位。列表公开；写接口只接受管理员令牌。
 - Redis 7.4.2（`:6379`）：只做缓存，不持久化。Elasticsearch 8.11.0（`:9200`）：搜索索引，可以随时从 MySQL 重建。
 - OpenTelemetry Collector（`:4317`）+ Jaeger（界面 `:16686`）：链路追踪。全部进程接入，跨 HTTP、gRPC、RabbitMQ 和后台任务；令牌、带值 SQL 等敏感内容在导出前去掉。
 - RabbitMQ 4.2.0（`:5672`，管理界面 `:15672`）：服务之间的事件。事件先和业务数据一起写进各服务的 `outbox_event`，再由投递器发出；消费方用 `inbox_event` 去重。现在有三条：订单到期（准时关单）、商品变更（banner 手工位跟随）、下单成功（从购物车移除已购商品）。
 
-**尚未完成**：售后审批与按商品退款、刷新令牌与吊销、角色权限、网关 HTTP 状态码映射、结构化日志、指标、日志诊断 Agent。
+**交易闭环已完成**：浏览 → 热门 → 加购 → 下单 → 支付 → 发货 → 收货 → 售后审批与退款。
+
+**尚未完成**：刷新令牌与吊销、角色权限、网关 HTTP 状态码映射、结构化日志、指标、日志诊断 Agent。
 
 ## 阅读路线
 
@@ -46,8 +48,8 @@
 | 购物车 | [`development/goods-service.md`](development/goods-service.md#9-购物车) → [`development/events.md`](development/events.md#53-下单成功orderplaced) |
 | 修改资料、修改密码 | [`development/user-service.md`](development/user-service.md#8-修改资料与密码) |
 | 搜索、Elasticsearch、IK、binlog | [`development/search-service.md`](development/search-service.md) |
-| 下单、订单状态、关单、发货收货、售后、服务身份 | [`development/order-service.md`](development/order-service.md) |
-| 支付、支付模拟器、回调签名、晚到付款退款、故障演练 | [`development/payment.md`](development/payment.md) |
+| 下单、订单状态、关单、发货收货、售后审批与退款、服务身份 | [`development/order-service.md`](development/order-service.md) |
+| 支付、支付模拟器、回调签名、晚到付款退款、部分退款、故障演练 | [`development/payment.md`](development/payment.md) |
 | RabbitMQ、事件、Outbox / Inbox、延迟关单、手工位跟随商品、下单后清购物车 | [`development/events.md`](development/events.md) |
 | 链路追踪、Jaeger、日志里的链路 ID、span 脱敏 | [`development/tracing.md`](development/tracing.md) |
 | 首页轮播图、手工位 | [`development/banner-service.md`](development/banner-service.md) |
@@ -99,15 +101,15 @@ cd app/gateway-h5  && go run .   # 终端 3，HTTP :8199
 - [`tasks/0015-frontend-api-and-hot-goods.md`](../tasks/0015-frontend-api-and-hot-goods.md)：前台改资料、改密码，商品热门推荐。
 - [`tasks/0016-cart.md`](../tasks/0016-cart.md)：购物车，`order.placed` 事件；修复多商品订单无法预留。
 - [`tasks/0017-shipping-and-receipt.md`](../tasks/0017-shipping-and-receipt.md)：发货、确认收货、到期自动确认。
+- [`tasks/0018-after-sale-refunds.md`](../tasks/0018-after-sale-refunds.md)：售后审批、按商品退款、模拟器部分退款。
 
 ## 下一阶段
 
-先补齐交易闭环（浏览 → 热门 → 加购 → 下单 → 支付 → 发货 → 收货 → 售后），再在完整流程上做可观测性。
+交易闭环已经完成，接下来在完整流程上做可观测性，为日志诊断 Agent 准备条件。
 
-1. **0018 售后审批与按商品退款**，复用支付模拟器的退款能力；同时定下售后时限，以及有售后申请时能不能发货。
-2. 结构化日志（详细设计 §9.1）：JSON 格式，`trace_id`、`span_id`、`service.name` 等作为字段；业务事件日志（`order.transition`、`payment.observed` 等），同样脱敏。
-3. 指标（§9.2）：Prometheus，`trade_rpc_duration_seconds`、待处理事件积压等；然后是告警（§9.3）。这三样齐了，就具备日志诊断 Agent 的前提。
-4. 故障实验：把详细设计 §10 的 T1–T10 做成可以重复执行的测试。
-5. 网关把 gRPC 状态码映射为 HTTP 状态码（现在所有业务错误都是 HTTP 200，只靠响应体 `code` 区分）；把集成测试扩展到其他 repository；事件的持久重试表与保留期清理。
+1. 结构化日志（详细设计 §9.1）：JSON 格式，`trace_id`、`span_id`、`service.name` 等作为字段；业务事件日志（`order.transition`、`payment.observed` 等），同样脱敏。
+2. 指标（§9.2）：Prometheus，`trade_rpc_duration_seconds`、待处理事件积压、未完成的退款（技术退款、售后退款的 `attempts`）等；然后是告警（§9.3）。这三样齐了，就具备日志诊断 Agent 的前提。
+3. 故障实验：把详细设计 §10 的 T1–T10 做成可以重复执行的测试。
+4. 网关把 gRPC 状态码映射为 HTTP 状态码（现在所有业务错误都是 HTTP 200，只靠响应体 `code` 区分）；把集成测试扩展到其他 repository；事件的持久重试表与保留期清理。
 
-优惠券不在第一版交易验收范围内（详细设计 §1）。闭环完成后如果要做，按订单状态机设计（下单锁券、支付核销、取消或退款退券），不照搬教程的 CRUD 加注册送券。
+优惠券不在第一版交易验收范围内（详细设计 §1）。如果要做，按订单状态机设计（下单锁券、支付核销、取消或退款退券），不照搬教程的 CRUD 加注册送券。

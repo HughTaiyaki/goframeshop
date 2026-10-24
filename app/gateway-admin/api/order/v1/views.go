@@ -48,8 +48,14 @@ type RefundView struct {
 	UserId    uint64      `json:"userId"    dc:"申请用户 ID"`
 	GoodsId   uint64      `json:"goodsId"   dc:"售后商品 ID"`
 	Reason    string      `json:"reason"    dc:"原因"`
-	Status    string      `json:"status"    dc:"PENDING 待处理 / APPROVED 同意 / REJECTED 拒绝"`
+	Status    string      `json:"status"    dc:"PENDING 待处理 / APPROVED 已同意，退款中 / REFUNDED 已退款 / REJECTED 已拒绝"`
 	CreatedAt *gtime.Time `json:"createdAt" dc:"申请时间"`
+
+	AmountCents uint64      `json:"amountCents" dc:"退款金额（分）：这件商品在订单里的小计"`
+	GoodsName   string      `json:"goodsName"   dc:"商品名（下单时）"`
+	ReviewNote  string      `json:"reviewNote"  dc:"审批意见；拒绝时是拒绝原因"`
+	ReviewedAt  *gtime.Time `json:"reviewedAt"  dc:"审批时间"`
+	RefundedAt  *gtime.Time `json:"refundedAt"  dc:"退款到账时间"`
 }
 
 type RefundListRes struct {

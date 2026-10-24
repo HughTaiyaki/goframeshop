@@ -153,4 +153,12 @@ type RefundRepository interface {
 	FindByNo(ctx context.Context, refundNo string) (*Refund, error)
 	List(ctx context.Context, userID uint64, status string, page, size int) ([]*Refund, error)
 	Count(ctx context.Context, userID uint64, status string) (int, error)
+	// ByOrder returns every request of one order.
+	ByOrder(ctx context.Context, orderID uint64) ([]*Refund, error)
+	// Transition applies c and reports whether this call changed the row.
+	Transition(ctx context.Context, refundID uint64, c RefundChange) (bool, error)
+	// DueApproved returns APPROVED requests, oldest first.
+	DueApproved(ctx context.Context, limit int) ([]*Refund, error)
+	// Attempted counts one failed refund call.
+	Attempted(ctx context.Context, refundID uint64) error
 }

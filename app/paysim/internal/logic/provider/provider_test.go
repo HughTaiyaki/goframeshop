@@ -182,25 +182,49 @@ func TestRefund(t *testing.T) {
 		t.Fatalf("unknown payment: %v", err)
 	}
 	p.Pay(ctx, "P1", false)
-	if _, err := p.Refund(ctx, "R1", "P1", 1000); !errors.Is(err, service.ErrInvalidArgument) {
-		t.Fatalf("partial refund: %v", err)
+	if _, err := p.Refund(ctx, "R0", "P1", 1991); !errors.Is(err, service.ErrInvalidArgument) {
+		t.Fatalf("more than was paid: %v", err)
 	}
-	r, err := p.Refund(ctx, "R1", "P1", 1990)
-	if err != nil || r.ID != "R1" {
-		t.Fatalf("refund: %+v %v", r, err)
+
+	// Two partial refunds (task 0018): the payment stays SUCCEEDED until
+	// everything is back.
+	if r, err := p.Refund(ctx, "R1", "P1", 1000); err != nil || r.AmountCents != 1000 {
+		t.Fatalf("first part: %+v %v", r, err)
 	}
-	if again, err := p.Refund(ctx, "R1", "P1", 1990); err != nil || again.ID != "R1" {
+	if q, _ := p.Query(ctx, "P1"); q.State != service.StateSucceeded {
+		t.Fatalf("state after a partial refund: %s", q.State)
+	}
+	if again, err := p.Refund(ctx, "R1", "P1", 1000); err != nil || again.ID != "R1" {
 		t.Fatalf("same refund again: %+v %v", again, err)
 	}
-	if _, err := p.Refund(ctx, "R2", "P1", 1990); !errors.Is(err, service.ErrConflict) {
-		t.Fatalf("second refund id: %v", err)
+	if _, err := p.Refund(ctx, "R1", "P1", 990); !errors.Is(err, service.ErrConflict) {
+		t.Fatalf("same id, other amount: %v", err)
+	}
+	if _, err := p.Refund(ctx, "R2", "P1", 991); !errors.Is(err, service.ErrInvalidArgument) {
+		t.Fatalf("past the remaining 990: %v", err)
+	}
+	if r, err := p.Refund(ctx, "R2", "P1", 990); err != nil || r.ID != "R2" {
+		t.Fatalf("the rest: %+v %v", r, err)
 	}
 	q, _ := p.Query(ctx, "P1")
 	if q.State != service.StateRefunded {
-		t.Fatalf("state after refund: %s", q.State)
+		t.Fatalf("state after the last part: %s", q.State)
+	}
+	// Both earlier refunds still answer as themselves; nothing more can go.
+	if again, err := p.Refund(ctx, "R1", "P1", 1000); err != nil || again.ID != "R1" {
+		t.Fatalf("first part again after full refund: %+v %v", again, err)
+	}
+	if _, err := p.Refund(ctx, "R3", "P1", 1); !errors.Is(err, service.ErrFailedPrecondition) {
+		t.Fatalf("refund of a refunded payment: %v", err)
 	}
 	if closed, _ := p.Close(ctx, "P1", "O-P1"); closed.State != service.StateRefunded {
 		t.Fatalf("close changed a refunded payment: %s", closed.State)
+	}
+	// A refund id names one refund: reusing it on another payment conflicts.
+	create(t, p, "P2")
+	p.Pay(ctx, "P2", false)
+	if _, err := p.Refund(ctx, "R1", "P2", 1000); !errors.Is(err, service.ErrConflict) {
+		t.Fatalf("refund id reused on another payment: %v", err)
 	}
 }
 

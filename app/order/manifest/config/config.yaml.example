@@ -18,6 +18,7 @@ order:
   reserveTimeout: "60s"     # RESERVING longer than this closes the order
   paymentTimeout: "15m"     # unpaid orders close and release their stock after this
   autoConfirm: "240h"       # shipped orders the shopper never confirms complete after this
+  afterSaleWindow: "168h"   # after-sale requests are accepted until this long after completion
   recoveryInterval: "5s"    # how often the worker drives stuck and expired orders
                             # (expired orders normally close on their expiry
                             # message; this scan is the fallback)

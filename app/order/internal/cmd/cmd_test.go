@@ -126,6 +126,14 @@ func TestWhoMayCallWhat(t *testing.T) {
 			_, err := orders.ShipOrder(c, &orderv1.ShipOrderRequest{})
 			return err
 		},
+		"ApproveRefund": func(c context.Context) error {
+			_, err := refunds.ApproveRefund(c, &refundv1.ApproveRefundRequest{})
+			return err
+		},
+		"RejectRefund": func(c context.Context) error {
+			_, err := refunds.RejectRefund(c, &refundv1.RejectRefundRequest{})
+			return err
+		},
 	}
 	check := func(group map[string]func(context.Context) error, want map[string]codes.Code) {
 		for name, rpc := range group {

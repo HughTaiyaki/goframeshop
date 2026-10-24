@@ -27,7 +27,7 @@ func New() service.Repository {
 }
 
 // Update locks the payment row (SELECT ... FOR UPDATE), lets decide look at
-// it and its refund, and writes the decision before committing. READ
+// it and its refunds, and writes the decision before committing. READ
 // COMMITTED avoids gap locks on rows that do not exist yet.
 func (r *repository) Update(ctx context.Context, paymentID string, decide service.Decide) (*service.Payment, error) {
 	var (
@@ -42,11 +42,11 @@ func (r *repository) Update(ctx context.Context, paymentID string, decide servic
 				if err != nil {
 					return err
 				}
-				refund, err := findRefund(ctx, tx, paymentID)
+				refunds, err := findRefunds(ctx, tx, paymentID)
 				if err != nil {
 					return err
 				}
-				write, err := decide(current, refund)
+				write, err := decide(current, refunds)
 				if err != nil {
 					return err
 				}
@@ -142,16 +142,23 @@ func findPayment(model *gdb.Model, paymentID string) (*service.Payment, error) {
 	return toPayment(row), nil
 }
 
-func findRefund(ctx context.Context, tx gdb.TX, paymentID string) (*service.Refund, error) {
-	var row *entity.Refund
-	err := dao.Refund.Ctx(ctx).TX(tx).Where(dao.Refund.Columns().PaymentId, paymentID).Scan(&row)
+// findRefunds reads the refunds of a payment whose row the caller has
+// locked: a new refund for it can only be added under the same lock, so the
+// list is complete for the decision.
+func findRefunds(ctx context.Context, tx gdb.TX, paymentID string) ([]*service.Refund, error) {
+	var rows []*entity.Refund
+	err := dao.Refund.Ctx(ctx).TX(tx).
+		Where(dao.Refund.Columns().PaymentId, paymentID).
+		OrderAsc(dao.Refund.Columns().CreatedAt).
+		Scan(&rows)
 	if err != nil && err != sql.ErrNoRows {
 		return nil, err
 	}
-	if row == nil {
-		return nil, nil
+	refunds := make([]*service.Refund, 0, len(rows))
+	for _, row := range rows {
+		refunds = append(refunds, &service.Refund{ID: row.RefundId, PaymentID: row.PaymentId, AmountCents: row.AmountCents})
 	}
-	return &service.Refund{ID: row.RefundId, PaymentID: row.PaymentId, AmountCents: row.AmountCents}, nil
+	return refunds, nil
 }
 
 func toPayment(row *entity.Payment) *service.Payment {

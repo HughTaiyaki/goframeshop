@@ -36,7 +36,7 @@ func (s *sProvider) Create(ctx context.Context, in *service.CreateInput) (*servi
 	if in.PaymentID == "" || in.OrderNo == "" || in.AmountCents == 0 || in.Currency != service.Currency || in.ExpiresAt.IsZero() {
 		return nil, service.ErrInvalidArgument
 	}
-	return s.payments.Update(ctx, in.PaymentID, func(p *service.Payment, _ *service.Refund) (service.Write, error) {
+	return s.payments.Update(ctx, in.PaymentID, func(p *service.Payment, _ []*service.Refund) (service.Write, error) {
 		if p == nil {
 			expires := in.ExpiresAt
 			return service.Write{Payment: &service.Payment{
@@ -61,7 +61,7 @@ func (s *sProvider) Close(ctx context.Context, paymentID, orderNo string) (*serv
 	if paymentID == "" || orderNo == "" {
 		return nil, service.ErrInvalidArgument
 	}
-	return s.payments.Update(ctx, paymentID, func(p *service.Payment, _ *service.Refund) (service.Write, error) {
+	return s.payments.Update(ctx, paymentID, func(p *service.Payment, _ []*service.Refund) (service.Write, error) {
 		if p == nil {
 			// The tombstone: a Create or Pay arriving later finds it closed.
 			return service.Write{Payment: &service.Payment{
@@ -96,33 +96,46 @@ func (s *sProvider) Query(ctx context.Context, paymentID string) (*service.Payme
 	return p, nil
 }
 
+// Refund returns part or all of a paid payment. A payment may be refunded
+// several times (one refund per after-sale goods line, task 0018) as long as
+// the refunds together do not exceed what was paid; it becomes REFUNDED once
+// everything is back. refund_id makes it idempotent: the same refund again
+// returns the first result, and the same id with a different payment or
+// amount is a conflict.
 func (s *sProvider) Refund(ctx context.Context, refundID, paymentID string, amountCents uint64) (*service.Refund, error) {
 	if refundID == "" || paymentID == "" || amountCents == 0 {
 		return nil, service.ErrInvalidArgument
 	}
 	var result *service.Refund
-	_, err := s.payments.Update(ctx, paymentID, func(p *service.Payment, r *service.Refund) (service.Write, error) {
+	_, err := s.payments.Update(ctx, paymentID, func(p *service.Payment, refunds []*service.Refund) (service.Write, error) {
 		if p == nil {
 			return service.Write{}, service.ErrNotFound
 		}
-		if r != nil {
-			// Only full refunds, so a payment has at most one refund.
-			if r.ID != refundID || r.AmountCents != amountCents {
-				return service.Write{}, service.ErrConflict
+		var refunded uint64
+		for _, r := range refunds {
+			if r.ID == refundID {
+				if r.AmountCents != amountCents {
+					return service.Write{}, service.ErrConflict
+				}
+				result = r
+				return service.Write{}, nil // the same refund again: done once
 			}
-			result = r
-			return service.Write{}, nil // the same refund again: done once
+			refunded += r.AmountCents
 		}
 		if p.State != service.StateSucceeded {
 			return service.Write{}, service.ErrFailedPrecondition
 		}
-		if amountCents != p.AmountCents {
+		if amountCents > p.AmountCents-refunded {
 			return service.Write{}, service.ErrInvalidArgument
 		}
-		refunded := *p
-		refunded.State = service.StateRefunded
 		result = &service.Refund{ID: refundID, PaymentID: paymentID, AmountCents: amountCents}
-		return service.Write{Payment: &refunded, Refund: result}, nil
+		write := service.Write{Refund: result}
+		if refunded+amountCents == p.AmountCents {
+			done := *p
+			done.State = service.StateRefunded
+			write.Payment = &done
+		}
+		return write, nil
 	})
 	if err != nil {
 		return nil, err
@@ -134,7 +147,7 @@ func (s *sProvider) Pay(ctx context.Context, paymentID string, notify bool) (*se
 	if paymentID == "" {
 		return nil, service.ErrInvalidArgument
 	}
-	return s.payments.Update(ctx, paymentID, func(p *service.Payment, _ *service.Refund) (service.Write, error) {
+	return s.payments.Update(ctx, paymentID, func(p *service.Payment, _ []*service.Refund) (service.Write, error) {
 		if p == nil {
 			return service.Write{}, service.ErrNotFound
 		}

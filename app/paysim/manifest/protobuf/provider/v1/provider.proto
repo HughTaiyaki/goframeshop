@@ -65,7 +65,8 @@ message RefundPaymentRequest {
   string refund_id = 1;
   // v:required|length:1,40
   string payment_id = 2;
-  // Must equal the payment's amount: only full refunds.
+  // Part or all of what is left: refunds of one payment may not add up to
+  // more than it (task 0018). It is REFUNDED once all of it is back.
   // v:min:1
   uint64 amount_cents = 3;
 }

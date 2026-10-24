@@ -6,22 +6,31 @@ option go_package = "github.com/hughtaiyaki/goframeshop/app/order/api/refund/v1"
 
 import "google/protobuf/timestamp.proto";
 
-// RefundService records after-sale requests. A shopper may ask only about a
+// RefundService handles after-sale requests. A shopper may ask only about a
 // paid order of their own, and only for goods in it; the user id always comes
-// from the token. Until the payment simulator exists no order can be paid,
-// so CreateRefund answers FAILED_PRECONDITION for now.
+// from the token. The amount is the goods line's subtotal, set by the server.
+//
+// An administrator approves (the money for that line is paid back through
+// the payment provider) or rejects with a reason.
 service RefundService {
   rpc CreateRefund(CreateRefundRequest) returns (RefundResponse);
   rpc ListMyRefunds(ListMyRefundsRequest) returns (ListRefundsResponse);
   rpc GetMyRefund(GetMyRefundRequest) returns (RefundResponse);
   rpc ListRefunds(ListRefundsRequest) returns (ListRefundsResponse);
+  // ApproveRefund moves PENDING to APPROVED and pays the amount back; it is
+  // REFUNDED once the provider confirms (retried by the worker until then).
+  // Approving an approved or refunded request returns it unchanged.
+  rpc ApproveRefund(ApproveRefundRequest) returns (RefundResponse);
+  // RejectRefund moves PENDING to REJECTED with a reason.
+  rpc RejectRefund(RejectRefundRequest) returns (RefundResponse);
 }
 
 enum RefundStatus {
   REFUND_STATUS_UNSPECIFIED = 0;
   PENDING = 1;
-  APPROVED = 2;
+  APPROVED = 2;   // approved; the money is being paid back
   REJECTED = 3;
+  REFUNDED = 4;   // the money is back
 }
 
 message CreateRefundRequest {
@@ -53,6 +62,21 @@ message ListRefundsRequest {
   uint32 size = 3;
 }
 
+message ApproveRefundRequest {
+  // v:required|length:1,32
+  string refund_no = 1;
+  // v:length:0,255
+  string note = 2;
+}
+
+message RejectRefundRequest {
+  // v:required|length:1,32
+  string refund_no = 1;
+  // Shown to the shopper.
+  // v:required|length:1,255
+  string note = 2;
+}
+
 message RefundResponse {
   Refund refund = 1;
 }
@@ -72,4 +96,11 @@ message Refund {
   string reason = 5;
   RefundStatus status = 6;
   google.protobuf.Timestamp created_at = 7;
+  // The goods line's subtotal: what is paid back when approved.
+  uint64 amount_cents = 8;
+  string goods_name = 9;
+  // The administrator's note; the reason when REJECTED.
+  string review_note = 10;
+  google.protobuf.Timestamp reviewed_at = 11;
+  google.protobuf.Timestamp refunded_at = 12;
 }

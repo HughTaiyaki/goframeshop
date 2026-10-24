@@ -24,21 +24,31 @@ const (
 	RefundService_ListMyRefunds_FullMethodName = "/refund.v1.RefundService/ListMyRefunds"
 	RefundService_GetMyRefund_FullMethodName   = "/refund.v1.RefundService/GetMyRefund"
 	RefundService_ListRefunds_FullMethodName   = "/refund.v1.RefundService/ListRefunds"
+	RefundService_ApproveRefund_FullMethodName = "/refund.v1.RefundService/ApproveRefund"
+	RefundService_RejectRefund_FullMethodName  = "/refund.v1.RefundService/RejectRefund"
 )
 
 // RefundServiceClient is the client API for RefundService service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 //
-// RefundService records after-sale requests. A shopper may ask only about a
+// RefundService handles after-sale requests. A shopper may ask only about a
 // paid order of their own, and only for goods in it; the user id always comes
-// from the token. Until the payment simulator exists no order can be paid,
-// so CreateRefund answers FAILED_PRECONDITION for now.
+// from the token. The amount is the goods line's subtotal, set by the server.
+//
+// An administrator approves (the money for that line is paid back through
+// the payment provider) or rejects with a reason.
 type RefundServiceClient interface {
 	CreateRefund(ctx context.Context, in *CreateRefundRequest, opts ...grpc.CallOption) (*RefundResponse, error)
 	ListMyRefunds(ctx context.Context, in *ListMyRefundsRequest, opts ...grpc.CallOption) (*ListRefundsResponse, error)
 	GetMyRefund(ctx context.Context, in *GetMyRefundRequest, opts ...grpc.CallOption) (*RefundResponse, error)
 	ListRefunds(ctx context.Context, in *ListRefundsRequest, opts ...grpc.CallOption) (*ListRefundsResponse, error)
+	// ApproveRefund moves PENDING to APPROVED and pays the amount back; it is
+	// REFUNDED once the provider confirms (retried by the worker until then).
+	// Approving an approved or refunded request returns it unchanged.
+	ApproveRefund(ctx context.Context, in *ApproveRefundRequest, opts ...grpc.CallOption) (*RefundResponse, error)
+	// RejectRefund moves PENDING to REJECTED with a reason.
+	RejectRefund(ctx context.Context, in *RejectRefundRequest, opts ...grpc.CallOption) (*RefundResponse, error)
 }
 
 type refundServiceClient struct {
@@ -89,19 +99,47 @@ func (c *refundServiceClient) ListRefunds(ctx context.Context, in *ListRefundsRe
 	return out, nil
 }
 
+func (c *refundServiceClient) ApproveRefund(ctx context.Context, in *ApproveRefundRequest, opts ...grpc.CallOption) (*RefundResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(RefundResponse)
+	err := c.cc.Invoke(ctx, RefundService_ApproveRefund_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *refundServiceClient) RejectRefund(ctx context.Context, in *RejectRefundRequest, opts ...grpc.CallOption) (*RefundResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(RefundResponse)
+	err := c.cc.Invoke(ctx, RefundService_RejectRefund_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // RefundServiceServer is the server API for RefundService service.
 // All implementations must embed UnimplementedRefundServiceServer
 // for forward compatibility.
 //
-// RefundService records after-sale requests. A shopper may ask only about a
+// RefundService handles after-sale requests. A shopper may ask only about a
 // paid order of their own, and only for goods in it; the user id always comes
-// from the token. Until the payment simulator exists no order can be paid,
-// so CreateRefund answers FAILED_PRECONDITION for now.
+// from the token. The amount is the goods line's subtotal, set by the server.
+//
+// An administrator approves (the money for that line is paid back through
+// the payment provider) or rejects with a reason.
 type RefundServiceServer interface {
 	CreateRefund(context.Context, *CreateRefundRequest) (*RefundResponse, error)
 	ListMyRefunds(context.Context, *ListMyRefundsRequest) (*ListRefundsResponse, error)
 	GetMyRefund(context.Context, *GetMyRefundRequest) (*RefundResponse, error)
 	ListRefunds(context.Context, *ListRefundsRequest) (*ListRefundsResponse, error)
+	// ApproveRefund moves PENDING to APPROVED and pays the amount back; it is
+	// REFUNDED once the provider confirms (retried by the worker until then).
+	// Approving an approved or refunded request returns it unchanged.
+	ApproveRefund(context.Context, *ApproveRefundRequest) (*RefundResponse, error)
+	// RejectRefund moves PENDING to REJECTED with a reason.
+	RejectRefund(context.Context, *RejectRefundRequest) (*RefundResponse, error)
 	mustEmbedUnimplementedRefundServiceServer()
 }
 
@@ -123,6 +161,12 @@ func (UnimplementedRefundServiceServer) GetMyRefund(context.Context, *GetMyRefun
 }
 func (UnimplementedRefundServiceServer) ListRefunds(context.Context, *ListRefundsRequest) (*ListRefundsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListRefunds not implemented")
+}
+func (UnimplementedRefundServiceServer) ApproveRefund(context.Context, *ApproveRefundRequest) (*RefundResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ApproveRefund not implemented")
+}
+func (UnimplementedRefundServiceServer) RejectRefund(context.Context, *RejectRefundRequest) (*RefundResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method RejectRefund not implemented")
 }
 func (UnimplementedRefundServiceServer) mustEmbedUnimplementedRefundServiceServer() {}
 func (UnimplementedRefundServiceServer) testEmbeddedByValue()                       {}
@@ -217,6 +261,42 @@ func _RefundService_ListRefunds_Handler(srv interface{}, ctx context.Context, de
 	return interceptor(ctx, in, info, handler)
 }
 
+func _RefundService_ApproveRefund_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ApproveRefundRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(RefundServiceServer).ApproveRefund(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: RefundService_ApproveRefund_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(RefundServiceServer).ApproveRefund(ctx, req.(*ApproveRefundRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _RefundService_RejectRefund_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RejectRefundRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(RefundServiceServer).RejectRefund(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: RefundService_RejectRefund_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(RefundServiceServer).RejectRefund(ctx, req.(*RejectRefundRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // RefundService_ServiceDesc is the grpc.ServiceDesc for RefundService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -239,6 +319,14 @@ var RefundService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ListRefunds",
 			Handler:    _RefundService_ListRefunds_Handler,
+		},
+		{
+			MethodName: "ApproveRefund",
+			Handler:    _RefundService_ApproveRefund_Handler,
+		},
+		{
+			MethodName: "RejectRefund",
+			Handler:    _RefundService_RejectRefund_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

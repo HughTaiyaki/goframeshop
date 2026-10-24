@@ -67,6 +67,12 @@ func toRefundView(r *refundv1.Refund) *v1.RefundView {
 		Reason:    r.Reason,
 		Status:    r.Status.String(),
 		CreatedAt: utility.TimeFromTimestamp(r.CreatedAt),
+
+		AmountCents: r.AmountCents,
+		GoodsName:   r.GoodsName,
+		ReviewNote:  r.ReviewNote,
+		ReviewedAt:  utility.TimeFromTimestamp(r.ReviewedAt),
+		RefundedAt:  utility.TimeFromTimestamp(r.RefundedAt),
 	}
 }
 

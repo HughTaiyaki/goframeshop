@@ -2,6 +2,27 @@
 
 每完成一个任务，在最上面加一节：新增了什么、改了什么、有哪些需要手动执行的步骤。细节和决定见对应的任务文件。
 
+## 0018 · 售后审批与按商品退款
+
+[任务文件](../tasks/0018-after-sale-refunds.md) · [开发说明](development/order-service.md#6-售后)
+
+- **售后可以审批了**：`PENDING ──同意──▶ APPROVED ──退款到账──▶ REFUNDED`，或者 `PENDING ──拒绝──▶ REJECTED`（必须写原因，顾客能看到）。
+- **按商品退款**：金额是这件商品在订单里的小计，申请时由服务端算好。同意后经支付模拟器退款，退款单号 `AS<售后单号>` 固定，重复同意、重试都只退一次；模拟器没有响应时停在 `APPROVED`，恢复任务继续退。
+- **支付模拟器支持部分退款**：一笔付款可以退多次，合计不超过付款金额，全部退完才变成 `REFUNDED`。
+- **新增接口**
+  - 后台：`POST /backend/refund/approve`、`POST /backend/refund/reject`；售后列表可以按 `REFUNDED` 筛选。
+  - 前后台的售后信息新增 `amountCents`、`goodsName`、`reviewNote`、`reviewedAt`、`refundedAt`。
+  - order 服务：`ApproveRefund`、`RejectRefund`（只接受管理员）。
+- **行为变化**
+  - 订单完成 7 天后不能再申请售后（`order.afterSaleWindow`，默认 `168h`）。
+  - 有待处理的售后时不能发货；所有商品都已同意退款时也不能发货。
+  - 模拟器：一笔付款全部退完后，再用新的退款单号退款返回 `FailedPrecondition`（以前是 `AlreadyExists`）。
+- **新增列** `orders.refund_info` 的 `amount_cents`（已有申请按订单商品回填）、`review_note`、`reviewed_at`、`refunded_at`、`attempts`，索引 `idx_refund_status`；`paysim.refund` 的唯一键 `uk_refund_payment` 改为普通索引。
+- **需要手动执行**
+  - `make db-init`（017）。
+  - 需要时在 `app/order` 的配置里加 `order.afterSaleWindow`。
+  - 重启 order、paysim、gateway-h5、gateway-admin。
+
 ## 0017 · 发货与收货
 
 [任务文件](../tasks/0017-shipping-and-receipt.md) · [开发说明](development/order-service.md#11-发货与收货)

@@ -21,28 +21,38 @@ type RefundInfoDao struct {
 
 // RefundInfoColumns defines and stores column names for the table refund_info.
 type RefundInfoColumns struct {
-	Id        string //
-	RefundNo  string //
-	OrderId   string //
-	UserId    string //
-	GoodsId   string //
-	Reason    string //
-	Status    string // PENDING, APPROVED or REJECTED
-	CreatedAt string //
-	UpdatedAt string //
+	Id          string //
+	RefundNo    string //
+	OrderId     string //
+	UserId      string //
+	GoodsId     string //
+	Reason      string //
+	AmountCents string // the goods line subtotal
+	Status      string // PENDING, APPROVED or REJECTED
+	ReviewNote  string // why it was approved or rejected
+	ReviewedAt  string //
+	RefundedAt  string //
+	Attempts    string //
+	CreatedAt   string //
+	UpdatedAt   string //
 }
 
 // refundInfoColumns holds the columns for the table refund_info.
 var refundInfoColumns = RefundInfoColumns{
-	Id:        "id",
-	RefundNo:  "refund_no",
-	OrderId:   "order_id",
-	UserId:    "user_id",
-	GoodsId:   "goods_id",
-	Reason:    "reason",
-	Status:    "status",
-	CreatedAt: "created_at",
-	UpdatedAt: "updated_at",
+	Id:          "id",
+	RefundNo:    "refund_no",
+	OrderId:     "order_id",
+	UserId:      "user_id",
+	GoodsId:     "goods_id",
+	Reason:      "reason",
+	AmountCents: "amount_cents",
+	Status:      "status",
+	ReviewNote:  "review_note",
+	ReviewedAt:  "reviewed_at",
+	RefundedAt:  "refunded_at",
+	Attempts:    "attempts",
+	CreatedAt:   "created_at",
+	UpdatedAt:   "updated_at",
 }
 
 // NewRefundInfoDao creates and returns a new DAO object for table data access.

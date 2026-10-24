@@ -268,9 +268,10 @@ type RefundPaymentRequest struct {
 	RefundId string `protobuf:"bytes,1,opt,name=refund_id,json=refundId,proto3" json:"refund_id,omitempty" v:"required|length:1,48"`
 	// v:required|length:1,40
 	PaymentId string `protobuf:"bytes,2,opt,name=payment_id,json=paymentId,proto3" json:"payment_id,omitempty" v:"required|length:1,40"`
-	// Must equal the payment's amount: only full refunds.
+	// Part or all of what is left: refunds of one payment may not add up to
+	// more than it (task 0018). It is REFUNDED once all of it is back.
 	// v:min:1
-	AmountCents   uint64 `protobuf:"varint,3,opt,name=amount_cents,json=amountCents,proto3" json:"amount_cents,omitempty" dc:"Must equal the payment's amount: only full refunds." v:"min:1"`
+	AmountCents   uint64 `protobuf:"varint,3,opt,name=amount_cents,json=amountCents,proto3" json:"amount_cents,omitempty" dc:"Part or all of what is left: refunds of one payment may not add up tomore than it (task 0018). It is REFUNDED once all of it is back." v:"min:1"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }

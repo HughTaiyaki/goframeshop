@@ -244,6 +244,7 @@ func (f *fakeInventory) count(kind string) int {
 // ---- fixture --------------------------------------------------------------
 
 type fixture struct {
+	refunds   *fakeRefundRepo
 	svc       service.IOrder
 	orders    *fakeOrders
 	payments  *fakePayments
@@ -279,8 +280,9 @@ func newFixture() *fixture {
 		2: {Name: "支架", PriceCents: 9900},
 	}
 	addresses := fakeAddresses{7: {Name: "张三", Phone: "13800000000", Address: "广东省东莞市 A101"}}
+	f.refunds = &fakeRefundRepo{}
 	f.svc = New(Deps{
-		Orders: f.orders, Payments: f.payments, Catalog: catalog, Addresses: addresses,
+		Orders: f.orders, Payments: f.payments, Refunds: f.refunds, Catalog: catalog, Addresses: addresses,
 		Inventory: f.inventory, Provider: f.provider, Notices: f.notices, Timing: timing, Now: f.clock,
 	})
 	return f
@@ -586,4 +588,20 @@ func TestPriceOverflowIsRefused(t *testing.T) {
 	if _, err := f.svc.Create(ctx, alice, in); !errors.Is(err, service.ErrInvalidArgument) {
 		t.Fatalf("err = %v", err)
 	}
+}
+
+// fakeRefundRepo holds the after-sale requests the shipping guard reads.
+type fakeRefundRepo struct {
+	service.RefundRepository
+	rows []*service.Refund
+}
+
+func (f *fakeRefundRepo) ByOrder(_ context.Context, orderID uint64) ([]*service.Refund, error) {
+	var out []*service.Refund
+	for _, r := range f.rows {
+		if r.OrderID == orderID {
+			out = append(out, r)
+		}
+	}
+	return out, nil
 }

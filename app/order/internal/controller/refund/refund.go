@@ -75,12 +75,33 @@ func respondList(ctx context.Context, refunds []*service.Refund, total int, page
 
 func toProto(r *service.Refund) *v1.Refund {
 	return &v1.Refund{
-		RefundNo:  r.No,
-		OrderNo:   r.OrderNo,
-		UserId:    r.UserID,
-		GoodsId:   r.GoodsID,
-		Reason:    r.Reason,
-		Status:    v1.RefundStatus(v1.RefundStatus_value[r.Status]),
-		CreatedAt: controller.Timestamp(&r.CreatedAt),
+		RefundNo:    r.No,
+		OrderNo:     r.OrderNo,
+		UserId:      r.UserID,
+		GoodsId:     r.GoodsID,
+		Reason:      r.Reason,
+		Status:      v1.RefundStatus(v1.RefundStatus_value[r.Status]),
+		CreatedAt:   controller.Timestamp(&r.CreatedAt),
+		AmountCents: r.AmountCents,
+		GoodsName:   r.GoodsName,
+		ReviewNote:  r.ReviewNote,
+		ReviewedAt:  controller.Timestamp(r.ReviewedAt),
+		RefundedAt:  controller.Timestamp(r.RefundedAt),
 	}
+}
+
+func (c *Controller) ApproveRefund(ctx context.Context, req *v1.ApproveRefundRequest) (*v1.RefundResponse, error) {
+	refund, err := c.refunds.Approve(ctx, req.RefundNo, req.Note)
+	if err != nil {
+		return nil, controller.StatusError(ctx, err)
+	}
+	return &v1.RefundResponse{Refund: toProto(refund)}, nil
+}
+
+func (c *Controller) RejectRefund(ctx context.Context, req *v1.RejectRefundRequest) (*v1.RefundResponse, error) {
+	refund, err := c.refunds.Reject(ctx, req.RefundNo, req.Note)
+	if err != nil {
+		return nil, controller.StatusError(ctx, err)
+	}
+	return &v1.RefundResponse{Refund: toProto(refund)}, nil
 }

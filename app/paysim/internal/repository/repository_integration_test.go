@@ -147,7 +147,58 @@ func TestIntegrationRefundOnce(t *testing.T) {
 	if n != 1 {
 		t.Fatalf("%d refunds for one payment", n)
 	}
-	if _, err := p.Refund(ctx, "other-"+id, id, 100); !errors.Is(err, service.ErrConflict) {
+	// Fully refunded: nothing more can go back (task 0018 allows parts, not
+	// more than was paid).
+	if _, err := p.Refund(ctx, "other-"+id, id, 100); !errors.Is(err, service.ErrFailedPrecondition) {
 		t.Fatalf("second refund id: %v", err)
+	}
+}
+
+// Partial refunds of one payment arriving together never add up to more
+// than was paid: the payment row lock serialises them (task 0018).
+func TestIntegrationPartialRefundsNeverExceedThePayment(t *testing.T) {
+	ctx, prefix := integration(t)
+	p := providerlogic.New(repository.New(), time.Now)
+	id := prefix + "parts"
+	p.Create(ctx, &service.CreateInput{PaymentID: id, OrderNo: "O" + id, AmountCents: 100, Currency: "CNY", ExpiresAt: time.Now().Add(time.Hour)})
+	if _, err := p.Pay(ctx, id, false); err != nil {
+		t.Fatal(err)
+	}
+	var wg sync.WaitGroup
+	var mu sync.Mutex
+	ok, tooMuch := 0, 0
+	for i := 0; i < 10; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			_, err := p.Refund(ctx, fmt.Sprintf("part%d-%s", i, id), id, 30)
+			mu.Lock()
+			defer mu.Unlock()
+			switch {
+			case err == nil:
+				ok++
+			case errors.Is(err, service.ErrInvalidArgument):
+				tooMuch++
+			default:
+				t.Error(err)
+			}
+		}()
+	}
+	wg.Wait()
+	if ok != 3 || tooMuch != 7 {
+		t.Fatalf("%d refunds of 30 went through and %d were refused, want 3 and 7", ok, tooMuch)
+	}
+	if q, _ := p.Query(ctx, id); q.State != service.StateSucceeded {
+		t.Fatalf("state after 90 of 100: %s", q.State)
+	}
+	if _, err := p.Refund(ctx, "rest-"+id, id, 10); err != nil {
+		t.Fatal(err)
+	}
+	if q, _ := p.Query(ctx, id); q.State != service.StateRefunded {
+		t.Fatalf("state after 100 of 100: %s", q.State)
+	}
+	n, _ := dao.Refund.Ctx(ctx).Where(dao.Refund.Columns().PaymentId, id).Count()
+	if n != 4 {
+		t.Fatalf("%d refund rows, want 4", n)
 	}
 }

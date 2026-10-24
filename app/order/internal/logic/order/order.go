@@ -45,6 +45,7 @@ import (
 type Deps struct {
 	Orders    service.OrderRepository
 	Payments  service.PaymentRepository
+	Refunds   service.RefundRepository
 	Catalog   service.Catalog
 	Addresses service.Addresses
 	Inventory service.Inventory
@@ -57,6 +58,7 @@ type Deps struct {
 type sOrder struct {
 	orders    service.OrderRepository
 	payments  service.PaymentRepository
+	refunds   service.RefundRepository
 	catalog   service.Catalog
 	addresses service.Addresses
 	inventory service.Inventory
@@ -68,7 +70,7 @@ type sOrder struct {
 
 func New(d Deps) service.IOrder {
 	return &sOrder{
-		orders: d.Orders, payments: d.Payments, catalog: d.Catalog, addresses: d.Addresses,
+		orders: d.Orders, payments: d.Payments, refunds: d.Refunds, catalog: d.Catalog, addresses: d.Addresses,
 		inventory: d.Inventory, provider: d.Provider, notices: d.Notices, timing: d.Timing, now: d.Now,
 	}
 }

@@ -28,8 +28,9 @@ type RefundStatus int32
 const (
 	RefundStatus_REFUND_STATUS_UNSPECIFIED RefundStatus = 0
 	RefundStatus_PENDING                   RefundStatus = 1
-	RefundStatus_APPROVED                  RefundStatus = 2
+	RefundStatus_APPROVED                  RefundStatus = 2 // approved; the money is being paid back
 	RefundStatus_REJECTED                  RefundStatus = 3
+	RefundStatus_REFUNDED                  RefundStatus = 4 // the money is back
 )
 
 // Enum value maps for RefundStatus.
@@ -39,12 +40,14 @@ var (
 		1: "PENDING",
 		2: "APPROVED",
 		3: "REJECTED",
+		4: "REFUNDED",
 	}
 	RefundStatus_value = map[string]int32{
 		"REFUND_STATUS_UNSPECIFIED": 0,
 		"PENDING":                   1,
 		"APPROVED":                  2,
 		"REJECTED":                  3,
+		"REFUNDED":                  4,
 	}
 )
 
@@ -299,6 +302,115 @@ func (x *ListRefundsRequest) GetSize() uint32 {
 	return 0
 }
 
+type ApproveRefundRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// v:required|length:1,32
+	RefundNo string `protobuf:"bytes,1,opt,name=refund_no,json=refundNo,proto3" json:"refund_no,omitempty" v:"required|length:1,32"`
+	// v:length:0,255
+	Note          string `protobuf:"bytes,2,opt,name=note,proto3" json:"note,omitempty" v:"length:0,255"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ApproveRefundRequest) Reset() {
+	*x = ApproveRefundRequest{}
+	mi := &file_refund_v1_refund_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ApproveRefundRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ApproveRefundRequest) ProtoMessage() {}
+
+func (x *ApproveRefundRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_refund_v1_refund_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ApproveRefundRequest.ProtoReflect.Descriptor instead.
+func (*ApproveRefundRequest) Descriptor() ([]byte, []int) {
+	return file_refund_v1_refund_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *ApproveRefundRequest) GetRefundNo() string {
+	if x != nil {
+		return x.RefundNo
+	}
+	return ""
+}
+
+func (x *ApproveRefundRequest) GetNote() string {
+	if x != nil {
+		return x.Note
+	}
+	return ""
+}
+
+type RejectRefundRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// v:required|length:1,32
+	RefundNo string `protobuf:"bytes,1,opt,name=refund_no,json=refundNo,proto3" json:"refund_no,omitempty" v:"required|length:1,32"`
+	// Shown to the shopper.
+	// v:required|length:1,255
+	Note          string `protobuf:"bytes,2,opt,name=note,proto3" json:"note,omitempty" dc:"Shown to the shopper." v:"required|length:1,255"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RejectRefundRequest) Reset() {
+	*x = RejectRefundRequest{}
+	mi := &file_refund_v1_refund_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RejectRefundRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RejectRefundRequest) ProtoMessage() {}
+
+func (x *RejectRefundRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_refund_v1_refund_proto_msgTypes[5]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RejectRefundRequest.ProtoReflect.Descriptor instead.
+func (*RejectRefundRequest) Descriptor() ([]byte, []int) {
+	return file_refund_v1_refund_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *RejectRefundRequest) GetRefundNo() string {
+	if x != nil {
+		return x.RefundNo
+	}
+	return ""
+}
+
+func (x *RejectRefundRequest) GetNote() string {
+	if x != nil {
+		return x.Note
+	}
+	return ""
+}
+
 type RefundResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Refund        *Refund                `protobuf:"bytes,1,opt,name=refund,proto3" json:"refund,omitempty"`
@@ -308,7 +420,7 @@ type RefundResponse struct {
 
 func (x *RefundResponse) Reset() {
 	*x = RefundResponse{}
-	mi := &file_refund_v1_refund_proto_msgTypes[4]
+	mi := &file_refund_v1_refund_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -320,7 +432,7 @@ func (x *RefundResponse) String() string {
 func (*RefundResponse) ProtoMessage() {}
 
 func (x *RefundResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_refund_v1_refund_proto_msgTypes[4]
+	mi := &file_refund_v1_refund_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -333,7 +445,7 @@ func (x *RefundResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RefundResponse.ProtoReflect.Descriptor instead.
 func (*RefundResponse) Descriptor() ([]byte, []int) {
-	return file_refund_v1_refund_proto_rawDescGZIP(), []int{4}
+	return file_refund_v1_refund_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *RefundResponse) GetRefund() *Refund {
@@ -355,7 +467,7 @@ type ListRefundsResponse struct {
 
 func (x *ListRefundsResponse) Reset() {
 	*x = ListRefundsResponse{}
-	mi := &file_refund_v1_refund_proto_msgTypes[5]
+	mi := &file_refund_v1_refund_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -367,7 +479,7 @@ func (x *ListRefundsResponse) String() string {
 func (*ListRefundsResponse) ProtoMessage() {}
 
 func (x *ListRefundsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_refund_v1_refund_proto_msgTypes[5]
+	mi := &file_refund_v1_refund_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -380,7 +492,7 @@ func (x *ListRefundsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListRefundsResponse.ProtoReflect.Descriptor instead.
 func (*ListRefundsResponse) Descriptor() ([]byte, []int) {
-	return file_refund_v1_refund_proto_rawDescGZIP(), []int{5}
+	return file_refund_v1_refund_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *ListRefundsResponse) GetItems() []*Refund {
@@ -412,21 +524,28 @@ func (x *ListRefundsResponse) GetTotal() uint64 {
 }
 
 type Refund struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	RefundNo      string                 `protobuf:"bytes,1,opt,name=refund_no,json=refundNo,proto3" json:"refund_no,omitempty"`
-	OrderNo       string                 `protobuf:"bytes,2,opt,name=order_no,json=orderNo,proto3" json:"order_no,omitempty"`
-	UserId        uint64                 `protobuf:"varint,3,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
-	GoodsId       uint64                 `protobuf:"varint,4,opt,name=goods_id,json=goodsId,proto3" json:"goods_id,omitempty"`
-	Reason        string                 `protobuf:"bytes,5,opt,name=reason,proto3" json:"reason,omitempty"`
-	Status        RefundStatus           `protobuf:"varint,6,opt,name=status,proto3,enum=refund.v1.RefundStatus" json:"status,omitempty"`
-	CreatedAt     *timestamppb.Timestamp `protobuf:"bytes,7,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	state     protoimpl.MessageState `protogen:"open.v1"`
+	RefundNo  string                 `protobuf:"bytes,1,opt,name=refund_no,json=refundNo,proto3" json:"refund_no,omitempty"`
+	OrderNo   string                 `protobuf:"bytes,2,opt,name=order_no,json=orderNo,proto3" json:"order_no,omitempty"`
+	UserId    uint64                 `protobuf:"varint,3,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	GoodsId   uint64                 `protobuf:"varint,4,opt,name=goods_id,json=goodsId,proto3" json:"goods_id,omitempty"`
+	Reason    string                 `protobuf:"bytes,5,opt,name=reason,proto3" json:"reason,omitempty"`
+	Status    RefundStatus           `protobuf:"varint,6,opt,name=status,proto3,enum=refund.v1.RefundStatus" json:"status,omitempty"`
+	CreatedAt *timestamppb.Timestamp `protobuf:"bytes,7,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	// The goods line's subtotal: what is paid back when approved.
+	AmountCents uint64 `protobuf:"varint,8,opt,name=amount_cents,json=amountCents,proto3" json:"amount_cents,omitempty" dc:"The goods line's subtotal: what is paid back when approved."`
+	GoodsName   string `protobuf:"bytes,9,opt,name=goods_name,json=goodsName,proto3" json:"goods_name,omitempty"`
+	// The administrator's note; the reason when REJECTED.
+	ReviewNote    string                 `protobuf:"bytes,10,opt,name=review_note,json=reviewNote,proto3" json:"review_note,omitempty" dc:"The administrator's note; the reason when REJECTED."`
+	ReviewedAt    *timestamppb.Timestamp `protobuf:"bytes,11,opt,name=reviewed_at,json=reviewedAt,proto3" json:"reviewed_at,omitempty"`
+	RefundedAt    *timestamppb.Timestamp `protobuf:"bytes,12,opt,name=refunded_at,json=refundedAt,proto3" json:"refunded_at,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *Refund) Reset() {
 	*x = Refund{}
-	mi := &file_refund_v1_refund_proto_msgTypes[6]
+	mi := &file_refund_v1_refund_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -438,7 +557,7 @@ func (x *Refund) String() string {
 func (*Refund) ProtoMessage() {}
 
 func (x *Refund) ProtoReflect() protoreflect.Message {
-	mi := &file_refund_v1_refund_proto_msgTypes[6]
+	mi := &file_refund_v1_refund_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -451,7 +570,7 @@ func (x *Refund) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Refund.ProtoReflect.Descriptor instead.
 func (*Refund) Descriptor() ([]byte, []int) {
-	return file_refund_v1_refund_proto_rawDescGZIP(), []int{6}
+	return file_refund_v1_refund_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *Refund) GetRefundNo() string {
@@ -503,6 +622,41 @@ func (x *Refund) GetCreatedAt() *timestamppb.Timestamp {
 	return nil
 }
 
+func (x *Refund) GetAmountCents() uint64 {
+	if x != nil {
+		return x.AmountCents
+	}
+	return 0
+}
+
+func (x *Refund) GetGoodsName() string {
+	if x != nil {
+		return x.GoodsName
+	}
+	return ""
+}
+
+func (x *Refund) GetReviewNote() string {
+	if x != nil {
+		return x.ReviewNote
+	}
+	return ""
+}
+
+func (x *Refund) GetReviewedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.ReviewedAt
+	}
+	return nil
+}
+
+func (x *Refund) GetRefundedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.RefundedAt
+	}
+	return nil
+}
+
 var File_refund_v1_refund_proto protoreflect.FileDescriptor
 
 const file_refund_v1_refund_proto_rawDesc = "" +
@@ -520,14 +674,20 @@ const file_refund_v1_refund_proto_rawDesc = "" +
 	"\x12ListRefundsRequest\x12/\n" +
 	"\x06status\x18\x01 \x01(\x0e2\x17.refund.v1.RefundStatusR\x06status\x12\x12\n" +
 	"\x04page\x18\x02 \x01(\rR\x04page\x12\x12\n" +
-	"\x04size\x18\x03 \x01(\rR\x04size\";\n" +
+	"\x04size\x18\x03 \x01(\rR\x04size\"G\n" +
+	"\x14ApproveRefundRequest\x12\x1b\n" +
+	"\trefund_no\x18\x01 \x01(\tR\brefundNo\x12\x12\n" +
+	"\x04note\x18\x02 \x01(\tR\x04note\"F\n" +
+	"\x13RejectRefundRequest\x12\x1b\n" +
+	"\trefund_no\x18\x01 \x01(\tR\brefundNo\x12\x12\n" +
+	"\x04note\x18\x02 \x01(\tR\x04note\";\n" +
 	"\x0eRefundResponse\x12)\n" +
 	"\x06refund\x18\x01 \x01(\v2\x11.refund.v1.RefundR\x06refund\"|\n" +
 	"\x13ListRefundsResponse\x12'\n" +
 	"\x05items\x18\x01 \x03(\v2\x11.refund.v1.RefundR\x05items\x12\x12\n" +
 	"\x04page\x18\x02 \x01(\rR\x04page\x12\x12\n" +
 	"\x04size\x18\x03 \x01(\rR\x04size\x12\x14\n" +
-	"\x05total\x18\x04 \x01(\x04R\x05total\"\xf8\x01\n" +
+	"\x05total\x18\x04 \x01(\x04R\x05total\"\xd5\x03\n" +
 	"\x06Refund\x12\x1b\n" +
 	"\trefund_no\x18\x01 \x01(\tR\brefundNo\x12\x19\n" +
 	"\border_no\x18\x02 \x01(\tR\aorderNo\x12\x17\n" +
@@ -536,17 +696,30 @@ const file_refund_v1_refund_proto_rawDesc = "" +
 	"\x06reason\x18\x05 \x01(\tR\x06reason\x12/\n" +
 	"\x06status\x18\x06 \x01(\x0e2\x17.refund.v1.RefundStatusR\x06status\x129\n" +
 	"\n" +
-	"created_at\x18\a \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt*V\n" +
+	"created_at\x18\a \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\x12!\n" +
+	"\famount_cents\x18\b \x01(\x04R\vamountCents\x12\x1d\n" +
+	"\n" +
+	"goods_name\x18\t \x01(\tR\tgoodsName\x12\x1f\n" +
+	"\vreview_note\x18\n" +
+	" \x01(\tR\n" +
+	"reviewNote\x12;\n" +
+	"\vreviewed_at\x18\v \x01(\v2\x1a.google.protobuf.TimestampR\n" +
+	"reviewedAt\x12;\n" +
+	"\vrefunded_at\x18\f \x01(\v2\x1a.google.protobuf.TimestampR\n" +
+	"refundedAt*d\n" +
 	"\fRefundStatus\x12\x1d\n" +
 	"\x19REFUND_STATUS_UNSPECIFIED\x10\x00\x12\v\n" +
 	"\aPENDING\x10\x01\x12\f\n" +
 	"\bAPPROVED\x10\x02\x12\f\n" +
-	"\bREJECTED\x10\x032\xc3\x02\n" +
+	"\bREJECTED\x10\x03\x12\f\n" +
+	"\bREFUNDED\x10\x042\xdb\x03\n" +
 	"\rRefundService\x12I\n" +
 	"\fCreateRefund\x12\x1e.refund.v1.CreateRefundRequest\x1a\x19.refund.v1.RefundResponse\x12P\n" +
 	"\rListMyRefunds\x12\x1f.refund.v1.ListMyRefundsRequest\x1a\x1e.refund.v1.ListRefundsResponse\x12G\n" +
 	"\vGetMyRefund\x12\x1d.refund.v1.GetMyRefundRequest\x1a\x19.refund.v1.RefundResponse\x12L\n" +
-	"\vListRefunds\x12\x1d.refund.v1.ListRefundsRequest\x1a\x1e.refund.v1.ListRefundsResponseB<Z:github.com/hughtaiyaki/goframeshop/app/order/api/refund/v1b\x06proto3"
+	"\vListRefunds\x12\x1d.refund.v1.ListRefundsRequest\x1a\x1e.refund.v1.ListRefundsResponse\x12K\n" +
+	"\rApproveRefund\x12\x1f.refund.v1.ApproveRefundRequest\x1a\x19.refund.v1.RefundResponse\x12I\n" +
+	"\fRejectRefund\x12\x1e.refund.v1.RejectRefundRequest\x1a\x19.refund.v1.RefundResponseB<Z:github.com/hughtaiyaki/goframeshop/app/order/api/refund/v1b\x06proto3"
 
 var (
 	file_refund_v1_refund_proto_rawDescOnce sync.Once
@@ -561,37 +734,45 @@ func file_refund_v1_refund_proto_rawDescGZIP() []byte {
 }
 
 var file_refund_v1_refund_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_refund_v1_refund_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
+var file_refund_v1_refund_proto_msgTypes = make([]protoimpl.MessageInfo, 9)
 var file_refund_v1_refund_proto_goTypes = []any{
 	(RefundStatus)(0),             // 0: refund.v1.RefundStatus
 	(*CreateRefundRequest)(nil),   // 1: refund.v1.CreateRefundRequest
 	(*ListMyRefundsRequest)(nil),  // 2: refund.v1.ListMyRefundsRequest
 	(*GetMyRefundRequest)(nil),    // 3: refund.v1.GetMyRefundRequest
 	(*ListRefundsRequest)(nil),    // 4: refund.v1.ListRefundsRequest
-	(*RefundResponse)(nil),        // 5: refund.v1.RefundResponse
-	(*ListRefundsResponse)(nil),   // 6: refund.v1.ListRefundsResponse
-	(*Refund)(nil),                // 7: refund.v1.Refund
-	(*timestamppb.Timestamp)(nil), // 8: google.protobuf.Timestamp
+	(*ApproveRefundRequest)(nil),  // 5: refund.v1.ApproveRefundRequest
+	(*RejectRefundRequest)(nil),   // 6: refund.v1.RejectRefundRequest
+	(*RefundResponse)(nil),        // 7: refund.v1.RefundResponse
+	(*ListRefundsResponse)(nil),   // 8: refund.v1.ListRefundsResponse
+	(*Refund)(nil),                // 9: refund.v1.Refund
+	(*timestamppb.Timestamp)(nil), // 10: google.protobuf.Timestamp
 }
 var file_refund_v1_refund_proto_depIdxs = []int32{
-	0, // 0: refund.v1.ListRefundsRequest.status:type_name -> refund.v1.RefundStatus
-	7, // 1: refund.v1.RefundResponse.refund:type_name -> refund.v1.Refund
-	7, // 2: refund.v1.ListRefundsResponse.items:type_name -> refund.v1.Refund
-	0, // 3: refund.v1.Refund.status:type_name -> refund.v1.RefundStatus
-	8, // 4: refund.v1.Refund.created_at:type_name -> google.protobuf.Timestamp
-	1, // 5: refund.v1.RefundService.CreateRefund:input_type -> refund.v1.CreateRefundRequest
-	2, // 6: refund.v1.RefundService.ListMyRefunds:input_type -> refund.v1.ListMyRefundsRequest
-	3, // 7: refund.v1.RefundService.GetMyRefund:input_type -> refund.v1.GetMyRefundRequest
-	4, // 8: refund.v1.RefundService.ListRefunds:input_type -> refund.v1.ListRefundsRequest
-	5, // 9: refund.v1.RefundService.CreateRefund:output_type -> refund.v1.RefundResponse
-	6, // 10: refund.v1.RefundService.ListMyRefunds:output_type -> refund.v1.ListRefundsResponse
-	5, // 11: refund.v1.RefundService.GetMyRefund:output_type -> refund.v1.RefundResponse
-	6, // 12: refund.v1.RefundService.ListRefunds:output_type -> refund.v1.ListRefundsResponse
-	9, // [9:13] is the sub-list for method output_type
-	5, // [5:9] is the sub-list for method input_type
-	5, // [5:5] is the sub-list for extension type_name
-	5, // [5:5] is the sub-list for extension extendee
-	0, // [0:5] is the sub-list for field type_name
+	0,  // 0: refund.v1.ListRefundsRequest.status:type_name -> refund.v1.RefundStatus
+	9,  // 1: refund.v1.RefundResponse.refund:type_name -> refund.v1.Refund
+	9,  // 2: refund.v1.ListRefundsResponse.items:type_name -> refund.v1.Refund
+	0,  // 3: refund.v1.Refund.status:type_name -> refund.v1.RefundStatus
+	10, // 4: refund.v1.Refund.created_at:type_name -> google.protobuf.Timestamp
+	10, // 5: refund.v1.Refund.reviewed_at:type_name -> google.protobuf.Timestamp
+	10, // 6: refund.v1.Refund.refunded_at:type_name -> google.protobuf.Timestamp
+	1,  // 7: refund.v1.RefundService.CreateRefund:input_type -> refund.v1.CreateRefundRequest
+	2,  // 8: refund.v1.RefundService.ListMyRefunds:input_type -> refund.v1.ListMyRefundsRequest
+	3,  // 9: refund.v1.RefundService.GetMyRefund:input_type -> refund.v1.GetMyRefundRequest
+	4,  // 10: refund.v1.RefundService.ListRefunds:input_type -> refund.v1.ListRefundsRequest
+	5,  // 11: refund.v1.RefundService.ApproveRefund:input_type -> refund.v1.ApproveRefundRequest
+	6,  // 12: refund.v1.RefundService.RejectRefund:input_type -> refund.v1.RejectRefundRequest
+	7,  // 13: refund.v1.RefundService.CreateRefund:output_type -> refund.v1.RefundResponse
+	8,  // 14: refund.v1.RefundService.ListMyRefunds:output_type -> refund.v1.ListRefundsResponse
+	7,  // 15: refund.v1.RefundService.GetMyRefund:output_type -> refund.v1.RefundResponse
+	8,  // 16: refund.v1.RefundService.ListRefunds:output_type -> refund.v1.ListRefundsResponse
+	7,  // 17: refund.v1.RefundService.ApproveRefund:output_type -> refund.v1.RefundResponse
+	7,  // 18: refund.v1.RefundService.RejectRefund:output_type -> refund.v1.RefundResponse
+	13, // [13:19] is the sub-list for method output_type
+	7,  // [7:13] is the sub-list for method input_type
+	7,  // [7:7] is the sub-list for extension type_name
+	7,  // [7:7] is the sub-list for extension extendee
+	0,  // [0:7] is the sub-list for field type_name
 }
 
 func init() { file_refund_v1_refund_proto_init() }
@@ -605,7 +786,7 @@ func file_refund_v1_refund_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_refund_v1_refund_proto_rawDesc), len(file_refund_v1_refund_proto_rawDesc)),
 			NumEnums:      1,
-			NumMessages:   7,
+			NumMessages:   9,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
