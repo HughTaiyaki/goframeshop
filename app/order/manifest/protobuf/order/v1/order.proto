@@ -20,6 +20,12 @@ service OrderService {
   rpc GetMyOrder(GetMyOrderRequest) returns (OrderResponse);
   rpc ListOrders(ListOrdersRequest) returns (ListOrdersResponse);
   rpc GetOrder(GetOrderRequest) returns (OrderResponse);
+  // ShipOrder (administrators) moves a PAID order to SHIPPED. Shipping it
+  // again with the same carrier and tracking number returns it unchanged.
+  rpc ShipOrder(ShipOrderRequest) returns (OrderResponse);
+  // ConfirmReceipt (the shopper, own orders only) moves SHIPPED to
+  // COMPLETED. Unconfirmed orders complete on their own at confirm_deadline.
+  rpc ConfirmReceipt(ConfirmReceiptRequest) returns (OrderResponse);
 }
 
 enum OrderStatus {
@@ -31,6 +37,8 @@ enum OrderStatus {
   PAYMENT_CONFIRMING = 5;  // paid; stock being committed
   PAID = 6;              // paid and the stock is sold
   EXCEPTION = 7;         // paid, but the stock could not be committed; being refunded
+  SHIPPED = 8;           // handed to the carrier; waiting for the shopper to confirm
+  COMPLETED = 9;         // received (confirmed by the shopper, or automatically)
 }
 
 message OrderItemInput {
@@ -55,6 +63,21 @@ message CreateOrderRequest {
   // The shopper checked out from the cart: once the order is placed, the
   // goods service takes the bought quantities out of the cart.
   bool from_cart = 5;
+}
+
+message ShipOrderRequest {
+  // v:required|length:1,32
+  string order_no = 1;
+  // v:required|length:1,32
+  string carrier = 2;
+  // Letters, digits and "-".
+  // v:required|regex:^[A-Za-z0-9-]{1,64}$
+  string tracking_no = 3;
+}
+
+message ConfirmReceiptRequest {
+  // v:required|length:1,32
+  string order_no = 1;
 }
 
 message CancelOrderRequest {
@@ -124,6 +147,15 @@ message Order {
   google.protobuf.Timestamp closed_at = 13;
   // When the money arrived.
   google.protobuf.Timestamp paid_at = 14;
+  // Set from SHIPPED on.
+  string carrier = 15;
+  string tracking_no = 16;
+  google.protobuf.Timestamp shipped_at = 17;
+  // A SHIPPED order completes on its own at this time.
+  google.protobuf.Timestamp confirm_deadline = 18;
+  google.protobuf.Timestamp completed_at = 19;
+  // USER_CONFIRMED or AUTO_CONFIRMED; empty unless COMPLETED.
+  string complete_reason = 20;
 }
 
 message OrderItem {

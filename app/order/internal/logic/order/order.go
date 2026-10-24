@@ -348,7 +348,21 @@ func (s *sOrder) drive(ctx context.Context, order *service.Order, now time.Time)
 		s.commit(ctx, order)
 	case service.StatusClosing:
 		s.close(ctx, order)
+	case service.StatusShipped:
+		// Only ones past their deadline get here (Due checks it).
+		if order.ConfirmDeadline != nil && !now.Before(*order.ConfirmDeadline) {
+			s.complete(ctx, order, service.CompleteAutoConfirmed, now)
+		}
 	}
+}
+
+// complete moves a SHIPPED order to COMPLETED. The shopper and the worker
+// may race; the conditional update lets exactly one of them win.
+func (s *sOrder) complete(ctx context.Context, order *service.Order, reason string, now time.Time) bool {
+	return s.transition(ctx, order, service.Change{
+		From: []string{service.StatusShipped}, To: service.StatusCompleted,
+		CompletedAt: &now, CompleteReason: reason,
+	})
 }
 
 func (s *sOrder) GetMine(ctx context.Context, userID uint64, orderNo string) (*service.Order, error) {

@@ -152,6 +152,22 @@ func (r *orderRepository) Transition(ctx context.Context, orderID uint64, c serv
 	if c.ClosedAt != nil {
 		data[columns.ClosedAt] = gtime.New(*c.ClosedAt)
 	}
+	if c.Shipment != nil {
+		data[columns.Carrier] = c.Shipment.Carrier
+		data[columns.TrackingNo] = c.Shipment.TrackingNo
+	}
+	if c.ShippedAt != nil {
+		data[columns.ShippedAt] = gtime.New(*c.ShippedAt)
+	}
+	if c.ConfirmDeadline != nil {
+		data[columns.ConfirmDeadline] = gtime.New(*c.ConfirmDeadline)
+	}
+	if c.CompletedAt != nil {
+		data[columns.CompletedAt] = gtime.New(*c.CompletedAt)
+	}
+	if c.CompleteReason != "" {
+		data[columns.CompleteReason] = c.CompleteReason
+	}
 	if len(c.Events) == 0 {
 		return transition(ctx, dao.OrderInfo.Ctx(ctx), orderID, c.From, data)
 	}
@@ -222,7 +238,10 @@ func (r *orderRepository) Due(ctx context.Context, now time.Time, limit int) ([]
 			WhereIn(columns.Status, []string{service.StatusReserving, service.StatusPaymentConfirming, service.StatusClosing}).
 			WhereOr(model.Builder().
 				Where(columns.Status, service.StatusPendingPayment).
-				WhereLTE(columns.ExpiresAt, gtime.New(now)))).
+				WhereLTE(columns.ExpiresAt, gtime.New(now))).
+			WhereOr(model.Builder().
+				Where(columns.Status, service.StatusShipped).
+				WhereLTE(columns.ConfirmDeadline, gtime.New(now)))).
 		OrderAsc(columns.Id).
 		Limit(limit))
 }
@@ -303,8 +322,20 @@ func toOrder(row *entity.OrderInfo) *service.Order {
 		t := row.ClosedAt.Time
 		o.ClosedAt = &t
 	}
+	o.Carrier, o.TrackingNo, o.CompleteReason = row.Carrier, row.TrackingNo, row.CompleteReason
+	o.ShippedAt = timeOf(row.ShippedAt)
+	o.ConfirmDeadline = timeOf(row.ConfirmDeadline)
+	o.CompletedAt = timeOf(row.CompletedAt)
 	if row.CreatedAt != nil {
 		o.CreatedAt = row.CreatedAt.Time
 	}
 	return o
+}
+
+func timeOf(t *gtime.Time) *time.Time {
+	if t == nil {
+		return nil
+	}
+	v := t.Time
+	return &v
 }

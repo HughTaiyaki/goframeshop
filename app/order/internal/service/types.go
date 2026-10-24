@@ -25,8 +25,7 @@ var (
 	ErrPaymentMismatch = errors.New("payment does not match the order")
 )
 
-// Order states (docs/GoFrame微服务商城详细设计.md §6.1). SHIPPED and later
-// are not implemented yet.
+// Order states (docs/GoFrame微服务商城详细设计.md §6.1).
 const (
 	StatusReserving      = "RESERVING"
 	StatusPendingPayment = "PENDING_PAYMENT"
@@ -39,7 +38,29 @@ const (
 	StatusException = "EXCEPTION"
 	StatusClosing   = "CLOSING"
 	StatusClosed    = "CLOSED"
+	// StatusShipped: handed to the carrier, waiting for the shopper.
+	StatusShipped = "SHIPPED"
+	// StatusCompleted: received, confirmed by the shopper or automatically.
+	StatusCompleted = "COMPLETED"
 )
+
+// Why an order completed.
+const (
+	CompleteUserConfirmed = "USER_CONFIRMED"
+	CompleteAutoConfirmed = "AUTO_CONFIRMED"
+)
+
+// Shipping limits, matching the columns.
+const (
+	MaxCarrierRunes    = 32
+	MaxTrackingNoBytes = 64
+)
+
+// Paid reports whether the shopper's money is held for this order: the
+// states in which an after-sale request makes sense.
+func Paid(status string) bool {
+	return status == StatusPaid || status == StatusShipped || status == StatusCompleted
+}
 
 // Why an order closed.
 const (
@@ -134,6 +155,15 @@ type Timing struct {
 	// PaymentTimeout is how long stock is held for an unpaid order
 	// (design: 15m).
 	PaymentTimeout time.Duration
+	// AutoConfirm is how long after shipping an unconfirmed order completes
+	// on its own (default 10 days).
+	AutoConfirm time.Duration
+}
+
+// Shipment is what the back office enters when it ships an order.
+type Shipment struct {
+	Carrier    string
+	TrackingNo string
 }
 
 type Order struct {
@@ -154,6 +184,12 @@ type Order struct {
 	ExpiresAt        *time.Time
 	PaidAt           *time.Time
 	ClosedAt         *time.Time
+	Carrier          string
+	TrackingNo       string
+	ShippedAt        *time.Time
+	ConfirmDeadline  *time.Time
+	CompletedAt      *time.Time
+	CompleteReason   string
 	CreatedAt        time.Time
 	Items            []OrderItem
 }
@@ -270,6 +306,12 @@ type IOrder interface {
 	// signature to decide whether to look: the facts come from querying the
 	// provider. nil means "acknowledged".
 	Notify(ctx context.Context, body []byte, signature string) error
+	// Ship (administrators) moves a PAID order to SHIPPED. Shipping it again
+	// with the same shipment returns it; a different one is refused.
+	Ship(ctx context.Context, orderNo string, in Shipment) (*Order, error)
+	// ConfirmReceipt (the shopper) moves their own SHIPPED order to
+	// COMPLETED; an already completed one is returned as it is.
+	ConfirmReceipt(ctx context.Context, userID uint64, orderNo string) (*Order, error)
 }
 
 // IRefund is the after-sale application service.

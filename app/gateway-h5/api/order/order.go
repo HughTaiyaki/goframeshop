@@ -20,4 +20,5 @@ type IOrderV1 interface {
 	RefundCreate(ctx context.Context, req *v1.RefundCreateReq) (res *v1.RefundCreateRes, err error)
 	RefundList(ctx context.Context, req *v1.RefundListReq) (res *v1.RefundListRes, err error)
 	RefundDetail(ctx context.Context, req *v1.RefundDetailReq) (res *v1.RefundDetailRes, err error)
+	OrderConfirm(ctx context.Context, req *v1.OrderConfirmReq) (res *v1.OrderConfirmRes, err error)
 }

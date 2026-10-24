@@ -1,6 +1,6 @@
 # order 订单服务开发
 
-`app/order` 负责下单、支付、取消、超时关单、订单查询和售后申请。它是一个 gRPC 服务，监听 `:31007`，使用 `orders` 库。任务、决定和验收见 [`tasks/0010-order-service.md`](../../tasks/0010-order-service.md)；支付部分见 [`payment.md`](payment.md) 和 [`tasks/0012-payment-simulator.md`](../../tasks/0012-payment-simulator.md)。
+`app/order` 负责下单、支付、取消、超时关单、发货与收货、订单查询和售后申请。它是一个 gRPC 服务，监听 `:31007`，使用 `orders` 库。任务、决定和验收见 [`tasks/0010-order-service.md`](../../tasks/0010-order-service.md)；支付部分见 [`payment.md`](payment.md) 和 [`tasks/0012-payment-simulator.md`](../../tasks/0012-payment-simulator.md)。
 
 本文先用一次下单把整个过程讲清楚，再说明规则和运维方法。
 
@@ -55,7 +55,9 @@ RESERVING ─────────▶ PENDING_PAYMENT ───────�
 | `RESERVING` | 正在向 goods 预留库存 | 下单请求本身，或者后台任务重试 |
 | `PENDING_PAYMENT` | 库存已留好，等待付款 | 付款确认；顾客取消；到期后由后台任务关单 |
 | `PAYMENT_CONFIRMING` | 钱到了，正在把预留的库存变成已售 | 提交成功 → `PAID`；没有结果由后台任务重试 |
-| `PAID` | 已支付 | 终态（发货以后再做） |
+| `PAID` | 已支付 | 后台发货 → `SHIPPED` |
+| `SHIPPED` | 已发货，等顾客确认 | 顾客确认收货，或到 `confirmDeadline` 由后台任务自动确认 → `COMPLETED`，见[第 11 节](#11-发货与收货) |
+| `COMPLETED` | 已完成 | 终态 |
 | `EXCEPTION` | 钱到了，库存却提交不了 | 自动退款成功后 → `CLOSING` |
 | `CLOSING` | 正在关闭支付单、把库存还回去 | 都完成后进入 `CLOSED`；失败的话后台任务一直重试 |
 | `CLOSED` | 结束，`closeReason` 写明原因 | 终态 |
@@ -91,6 +93,7 @@ UPDATE order_info SET status='CLOSING', close_reason=... WHERE id=? AND status I
 | `RESERVING`，超过 60 秒 | 改为 `CLOSING`，再释放 |
 | `PENDING_PAYMENT`，已经过期 | 改为 `CLOSING`（原因 `PAYMENT_TIMEOUT`），再关闭 |
 | `PAYMENT_CONFIRMING` | 用同一个操作号重试提交库存 |
+| `SHIPPED`，已过 `confirm_deadline` | 改为 `COMPLETED`（`AUTO_CONFIRMED`） |
 | `CLOSING` | 先请支付模拟器关闭支付单，再释放库存（见 [`payment.md` 规则五](payment.md#规则五关单先处理支付再还库存)） |
 | 没完成的技术退款 | 用同一个退款单号重试 |
 
@@ -104,8 +107,8 @@ UPDATE order_info SET status='CLOSING', close_reason=... WHERE id=? AND status I
 
 | 接口 | 谁能调 | 经过哪个网关 |
 | --- | --- | --- |
-| 下单、取消、去支付、我的订单（列表、详情）、申请售后、我的售后（列表、详情） | 商城用户令牌 | gateway-h5：`/frontend/order*`、`/frontend/refund*` |
-| 全部订单（列表、详情）、全部售后 | 管理员令牌 | gateway-admin：`/backend/order*`、`/backend/refund` |
+| 下单、取消、去支付、我的订单（列表、详情）、确认收货、申请售后、我的售后（列表、详情） | 商城用户令牌 | gateway-h5：`/frontend/order*`、`/frontend/refund*` |
+| 全部订单（列表、详情）、发货、全部售后 | 管理员令牌 | gateway-admin：`/backend/order*`、`/backend/refund` |
 | 支付结果通知 `NotifyPayment` | 不需要令牌，靠支付模拟器的签名 | gateway-h5：`/frontend/payment/notify` |
 
 - 用户令牌调用管理员接口返回 `PermissionDenied`（`code:7`），反过来也一样。没有令牌返回 `Unauthenticated`（`code:16`）。
@@ -143,7 +146,7 @@ goods 的权限规则因此变成：
 
 ## 6. 售后
 
-- 顾客只能对**自己的、已支付的**（`PAID`）订单申请；商品必须在这个订单里；同一订单的同一件商品只能申请一次。其他状态的订单返回 `code:9`。
+- 顾客只能对**自己的、已付款的**订单申请（`PAID`、`SHIPPED`、`COMPLETED`）；商品必须在这个订单里；同一订单的同一件商品只能申请一次。其他状态的订单返回 `code:9`。
 - 售后的审批（同意、拒绝）和按商品退款还没做；目前只有系统自动发起的整单技术退款（见 [`payment.md`](payment.md)）。
 
 ## 7. 本地运行
@@ -203,3 +206,25 @@ go test ./app/order/...
 - 订单号的唯一性靠数据库唯一键保证；同一秒内两个订单号碰撞的概率约为一亿分之一，碰撞时那次下单会失败，需要重新提交。
 - 后台任务每次最多处理 100 个订单；订单量大时应该分批，并给 `Due` 查询加上更合适的索引。
 - 历史订单、墓碑记录的清理没有做。
+
+## 11. 发货与收货
+
+任务见 [`tasks/0017-shipping-and-receipt.md`](../../tasks/0017-shipping-and-receipt.md)。
+
+```text
+PAID ──POST /backend/order/ship──▶ SHIPPED ──POST /frontend/order/confirm──▶ COMPLETED (USER_CONFIRMED)
+                                       └──── confirm_deadline 到了，恢复任务 ────▶ COMPLETED (AUTO_CONFIRMED)
+```
+
+| 操作 | 条件 UPDATE | 重复调用 |
+| --- | --- | --- |
+| 发货 `ShipOrder`（管理员） | `WHERE status='PAID'`，写入物流公司、运单号、`shipped_at`、`confirm_deadline = shipped_at + autoConfirm` | 同物流公司和运单号：返回当前订单；不同：`code:9`，不改已发出的运单 |
+| 确认收货 `ConfirmReceipt`（顾客本人） | `WHERE status='SHIPPED'`，写入 `completed_at`、`complete_reason` | 已完成：直接返回 |
+| 自动确认（恢复任务） | 同上，`AUTO_CONFIRMED` | 和顾客确认同时发生时只有一方改到行，另一方读到已完成的订单 |
+
+- 物流公司 1–32 个字符；运单号 1–64 位，只能是字母、数字和 `-`。
+- 别人的订单确认收货返回 `code:5`（NotFound），和查询一致。
+- 自动确认靠数据库扫描（索引 `idx_order_confirm (status, confirm_deadline)`），不用延迟消息：10 天的精度不需要准到秒。
+- 配置 `order.autoConfirm`，默认 `240h`。本地想看自动确认，可以把它调短，或者直接把某个订单的 `confirm_deadline` 改到过去，几秒内（`recoveryInterval`）就会完成。
+- 发货、收货不发事件：现在没有消费者，需要时再加到 `utility/eventbus/contracts.go`。
+

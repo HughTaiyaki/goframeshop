@@ -2,6 +2,24 @@
 
 每完成一个任务，在最上面加一节：新增了什么、改了什么、有哪些需要手动执行的步骤。细节和决定见对应的任务文件。
 
+## 0017 · 发货与收货
+
+[任务文件](../tasks/0017-shipping-and-receipt.md) · [开发说明](development/order-service.md#11-发货与收货)
+
+- **订单新增两个状态**：`PAID ──发货──▶ SHIPPED ──确认收货 / 到期自动确认──▶ COMPLETED`。
+- **新增接口**
+  - 后台：`POST /backend/order/ship`（物流公司、运单号）。同一运单号重复提交直接返回；换运单号返回 `code:9`。
+  - 前台：`POST /frontend/order/confirm` 确认收货。
+  - order 服务：`ShipOrder`（只接受管理员）、`ConfirmReceipt`（只接受商城用户）。
+  - 订单视图新增 `carrier`、`trackingNo`、`shippedAt`、`confirmDeadline`、`completedAt`、`completeReason`；前后台列表可以按 `SHIPPED`、`COMPLETED` 筛选。
+- **自动确认收货**：恢复任务把超过 `confirm_deadline` 的已发货订单改为已完成。新增配置 `order.autoConfirm`，默认 `240h`（10 天）。
+- **行为变化**：已发货、已完成的订单也可以申请售后（以前只有 `PAID`）。
+- **新增列** `orders.order_info` 的 `carrier`、`tracking_no`、`shipped_at`、`confirm_deadline`、`completed_at`、`complete_reason`，索引 `idx_order_confirm`。
+- **需要手动执行**
+  - `make db-init`（016）。
+  - 需要时在 `app/order` 的配置里加 `order.autoConfirm`（不加就是 10 天）。
+  - 重启 order、gateway-h5、gateway-admin。
+
 ## 0016 · 购物车
 
 [任务文件](../tasks/0016-cart.md) · [开发说明](development/goods-service.md#9-购物车)

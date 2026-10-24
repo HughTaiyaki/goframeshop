@@ -27,6 +27,12 @@ func toOrderView(o *orderv1.Order) *v1.OrderView {
 		ExpiresAt:        utility.TimeFromTimestamp(o.ExpiresAt),
 		PaidAt:           utility.TimeFromTimestamp(o.PaidAt),
 		ClosedAt:         utility.TimeFromTimestamp(o.ClosedAt),
+		Carrier:          o.Carrier,
+		TrackingNo:       o.TrackingNo,
+		ShippedAt:        utility.TimeFromTimestamp(o.ShippedAt),
+		ConfirmDeadline:  utility.TimeFromTimestamp(o.ConfirmDeadline),
+		CompletedAt:      utility.TimeFromTimestamp(o.CompletedAt),
+		CompleteReason:   o.CompleteReason,
 	}
 	for _, item := range o.Items {
 		view.Items = append(view.Items, &v1.OrderItemView{

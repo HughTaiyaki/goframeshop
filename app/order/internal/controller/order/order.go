@@ -124,6 +124,12 @@ func ToProto(o *service.Order) *v1.Order {
 		ExpiresAt:        controller.Timestamp(o.ExpiresAt),
 		ClosedAt:         controller.Timestamp(o.ClosedAt),
 		PaidAt:           controller.Timestamp(o.PaidAt),
+		Carrier:          o.Carrier,
+		TrackingNo:       o.TrackingNo,
+		ShippedAt:        controller.Timestamp(o.ShippedAt),
+		ConfirmDeadline:  controller.Timestamp(o.ConfirmDeadline),
+		CompletedAt:      controller.Timestamp(o.CompletedAt),
+		CompleteReason:   o.CompleteReason,
 	}
 	for _, item := range o.Items {
 		out.Items = append(out.Items, &v1.OrderItem{
@@ -136,4 +142,18 @@ func ToProto(o *service.Order) *v1.Order {
 		})
 	}
 	return out
+}
+
+func (c *Controller) ShipOrder(ctx context.Context, req *v1.ShipOrderRequest) (*v1.OrderResponse, error) {
+	order, err := c.orders.Ship(ctx, req.OrderNo, service.Shipment{Carrier: req.Carrier, TrackingNo: req.TrackingNo})
+	return respond(ctx, order, err)
+}
+
+func (c *Controller) ConfirmReceipt(ctx context.Context, req *v1.ConfirmReceiptRequest) (*v1.OrderResponse, error) {
+	userID, err := controller.CallerID(ctx)
+	if err != nil {
+		return nil, err
+	}
+	order, err := c.orders.ConfirmReceipt(ctx, userID, req.OrderNo)
+	return respond(ctx, order, err)
 }

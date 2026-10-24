@@ -89,6 +89,13 @@ type Change struct {
 	ExpiresAt   *time.Time
 	PaidAt      *time.Time
 	ClosedAt    *time.Time
+	// Shipment and ConfirmDeadline are written when shipping;
+	// CompletedAt and CompleteReason when completing.
+	Shipment        *Shipment
+	ShippedAt       *time.Time
+	ConfirmDeadline *time.Time
+	CompletedAt     *time.Time
+	CompleteReason  string
 	// Events are written to the outbox in the same transaction, and only if
 	// this change wins.
 	Events []eventbus.Event
@@ -107,8 +114,8 @@ type OrderRepository interface {
 	// Transition applies c and reports whether this call changed the row.
 	Transition(ctx context.Context, orderID uint64, c Change) (bool, error)
 	// Due returns orders needing the worker, oldest first: all RESERVING,
-	// PAYMENT_CONFIRMING and CLOSING ones, and PENDING_PAYMENT ones expired
-	// at now.
+	// PAYMENT_CONFIRMING and CLOSING ones, PENDING_PAYMENT ones expired at
+	// now, and SHIPPED ones past their confirm deadline.
 	Due(ctx context.Context, now time.Time, limit int) ([]*Order, error)
 }
 

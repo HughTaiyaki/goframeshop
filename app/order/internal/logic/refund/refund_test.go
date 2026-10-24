@@ -65,6 +65,9 @@ func setup() (service.IRefund, *fakeOrders) {
 	orders := &fakeOrders{byNo: map[string]*service.Order{
 		"PAID-1":    {ID: 1, No: "PAID-1", UserID: alice, Status: service.StatusPaid, Items: []service.OrderItem{{GoodsID: 10}, {GoodsID: 11}}},
 		"PENDING-2": {ID: 2, No: "PENDING-2", UserID: alice, Status: service.StatusPendingPayment, Items: []service.OrderItem{{GoodsID: 10}}},
+		"SHIPPED-3": {ID: 3, No: "SHIPPED-3", UserID: alice, Status: service.StatusShipped, Items: []service.OrderItem{{GoodsID: 10}}},
+		"DONE-4":    {ID: 4, No: "DONE-4", UserID: alice, Status: service.StatusCompleted, Items: []service.OrderItem{{GoodsID: 10}}},
+		"CLOSED-5":  {ID: 5, No: "CLOSED-5", UserID: alice, Status: service.StatusClosed, Items: []service.OrderItem{{GoodsID: 10}}},
 	}}
 	return New(&fakeRefunds{}, orders, func() time.Time { return time.Date(2026, 10, 20, 0, 0, 0, 0, time.UTC) }), orders
 }
@@ -85,6 +88,7 @@ func TestOnlyPaidOrdersOfTheCallerCanBeRefunded(t *testing.T) {
 		want    error
 	}{
 		"not paid yet":         {alice, "PENDING-2", 10, "x", service.ErrFailedPrecondition},
+		"closed":               {alice, "CLOSED-5", 10, "x", service.ErrFailedPrecondition},
 		"someone else's order": {bob, "PAID-1", 10, "x", service.ErrNotFound},
 		"unknown order":        {alice, "NOPE", 10, "x", service.ErrNotFound},
 		"goods not in order":   {alice, "PAID-1", 99, "x", service.ErrInvalidArgument},
@@ -98,13 +102,20 @@ func TestOnlyPaidOrdersOfTheCallerCanBeRefunded(t *testing.T) {
 		}
 	}
 
+	// Shipping does not take away the right to an after-sale (task 0017).
+	for _, no := range []string{"SHIPPED-3", "DONE-4"} {
+		if _, err := svc.Create(ctx, alice, no, 10, "坏了"); err != nil {
+			t.Errorf("%s: %v", no, err)
+		}
+	}
+
 	if _, err := svc.GetMine(ctx, bob, r.No); !errors.Is(err, service.ErrNotFound) {
 		t.Fatalf("other user's refund: err = %v", err)
 	}
 	if mine, total, _ := svc.ListMine(ctx, bob, 1, 10); total != 0 || len(mine) != 0 {
 		t.Fatalf("bob sees %d refunds", total)
 	}
-	if _, total, _ := svc.List(ctx, service.RefundPending, 1, 10); total != 1 {
+	if _, total, _ := svc.List(ctx, service.RefundPending, 1, 10); total != 3 {
 		t.Fatalf("admin list total = %d", total)
 	}
 }

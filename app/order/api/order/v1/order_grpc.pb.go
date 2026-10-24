@@ -20,12 +20,14 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	OrderService_CreateOrder_FullMethodName  = "/order.v1.OrderService/CreateOrder"
-	OrderService_CancelOrder_FullMethodName  = "/order.v1.OrderService/CancelOrder"
-	OrderService_ListMyOrders_FullMethodName = "/order.v1.OrderService/ListMyOrders"
-	OrderService_GetMyOrder_FullMethodName   = "/order.v1.OrderService/GetMyOrder"
-	OrderService_ListOrders_FullMethodName   = "/order.v1.OrderService/ListOrders"
-	OrderService_GetOrder_FullMethodName     = "/order.v1.OrderService/GetOrder"
+	OrderService_CreateOrder_FullMethodName    = "/order.v1.OrderService/CreateOrder"
+	OrderService_CancelOrder_FullMethodName    = "/order.v1.OrderService/CancelOrder"
+	OrderService_ListMyOrders_FullMethodName   = "/order.v1.OrderService/ListMyOrders"
+	OrderService_GetMyOrder_FullMethodName     = "/order.v1.OrderService/GetMyOrder"
+	OrderService_ListOrders_FullMethodName     = "/order.v1.OrderService/ListOrders"
+	OrderService_GetOrder_FullMethodName       = "/order.v1.OrderService/GetOrder"
+	OrderService_ShipOrder_FullMethodName      = "/order.v1.OrderService/ShipOrder"
+	OrderService_ConfirmReceipt_FullMethodName = "/order.v1.OrderService/ConfirmReceipt"
 )
 
 // OrderServiceClient is the client API for OrderService service.
@@ -46,6 +48,12 @@ type OrderServiceClient interface {
 	GetMyOrder(ctx context.Context, in *GetMyOrderRequest, opts ...grpc.CallOption) (*OrderResponse, error)
 	ListOrders(ctx context.Context, in *ListOrdersRequest, opts ...grpc.CallOption) (*ListOrdersResponse, error)
 	GetOrder(ctx context.Context, in *GetOrderRequest, opts ...grpc.CallOption) (*OrderResponse, error)
+	// ShipOrder (administrators) moves a PAID order to SHIPPED. Shipping it
+	// again with the same carrier and tracking number returns it unchanged.
+	ShipOrder(ctx context.Context, in *ShipOrderRequest, opts ...grpc.CallOption) (*OrderResponse, error)
+	// ConfirmReceipt (the shopper, own orders only) moves SHIPPED to
+	// COMPLETED. Unconfirmed orders complete on their own at confirm_deadline.
+	ConfirmReceipt(ctx context.Context, in *ConfirmReceiptRequest, opts ...grpc.CallOption) (*OrderResponse, error)
 }
 
 type orderServiceClient struct {
@@ -116,6 +124,26 @@ func (c *orderServiceClient) GetOrder(ctx context.Context, in *GetOrderRequest, 
 	return out, nil
 }
 
+func (c *orderServiceClient) ShipOrder(ctx context.Context, in *ShipOrderRequest, opts ...grpc.CallOption) (*OrderResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(OrderResponse)
+	err := c.cc.Invoke(ctx, OrderService_ShipOrder_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *orderServiceClient) ConfirmReceipt(ctx context.Context, in *ConfirmReceiptRequest, opts ...grpc.CallOption) (*OrderResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(OrderResponse)
+	err := c.cc.Invoke(ctx, OrderService_ConfirmReceipt_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // OrderServiceServer is the server API for OrderService service.
 // All implementations must embed UnimplementedOrderServiceServer
 // for forward compatibility.
@@ -134,6 +162,12 @@ type OrderServiceServer interface {
 	GetMyOrder(context.Context, *GetMyOrderRequest) (*OrderResponse, error)
 	ListOrders(context.Context, *ListOrdersRequest) (*ListOrdersResponse, error)
 	GetOrder(context.Context, *GetOrderRequest) (*OrderResponse, error)
+	// ShipOrder (administrators) moves a PAID order to SHIPPED. Shipping it
+	// again with the same carrier and tracking number returns it unchanged.
+	ShipOrder(context.Context, *ShipOrderRequest) (*OrderResponse, error)
+	// ConfirmReceipt (the shopper, own orders only) moves SHIPPED to
+	// COMPLETED. Unconfirmed orders complete on their own at confirm_deadline.
+	ConfirmReceipt(context.Context, *ConfirmReceiptRequest) (*OrderResponse, error)
 	mustEmbedUnimplementedOrderServiceServer()
 }
 
@@ -161,6 +195,12 @@ func (UnimplementedOrderServiceServer) ListOrders(context.Context, *ListOrdersRe
 }
 func (UnimplementedOrderServiceServer) GetOrder(context.Context, *GetOrderRequest) (*OrderResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetOrder not implemented")
+}
+func (UnimplementedOrderServiceServer) ShipOrder(context.Context, *ShipOrderRequest) (*OrderResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ShipOrder not implemented")
+}
+func (UnimplementedOrderServiceServer) ConfirmReceipt(context.Context, *ConfirmReceiptRequest) (*OrderResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ConfirmReceipt not implemented")
 }
 func (UnimplementedOrderServiceServer) mustEmbedUnimplementedOrderServiceServer() {}
 func (UnimplementedOrderServiceServer) testEmbeddedByValue()                      {}
@@ -291,6 +331,42 @@ func _OrderService_GetOrder_Handler(srv interface{}, ctx context.Context, dec fu
 	return interceptor(ctx, in, info, handler)
 }
 
+func _OrderService_ShipOrder_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ShipOrderRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(OrderServiceServer).ShipOrder(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: OrderService_ShipOrder_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(OrderServiceServer).ShipOrder(ctx, req.(*ShipOrderRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _OrderService_ConfirmReceipt_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ConfirmReceiptRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(OrderServiceServer).ConfirmReceipt(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: OrderService_ConfirmReceipt_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(OrderServiceServer).ConfirmReceipt(ctx, req.(*ConfirmReceiptRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // OrderService_ServiceDesc is the grpc.ServiceDesc for OrderService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -321,6 +397,14 @@ var OrderService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetOrder",
 			Handler:    _OrderService_GetOrder_Handler,
+		},
+		{
+			MethodName: "ShipOrder",
+			Handler:    _OrderService_ShipOrder_Handler,
+		},
+		{
+			MethodName: "ConfirmReceipt",
+			Handler:    _OrderService_ConfirmReceipt_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

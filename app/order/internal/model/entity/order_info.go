@@ -27,6 +27,12 @@ type OrderInfo struct {
 	ExpiresAt        *gtime.Time `json:"expiresAt"        orm:"expires_at"        description:""`                                                 //
 	ClosedAt         *gtime.Time `json:"closedAt"         orm:"closed_at"         description:""`                                                 //
 	PaidAt           *gtime.Time `json:"paidAt"           orm:"paid_at"           description:""`                                                 //
+	Carrier          string      `json:"carrier"          orm:"carrier"           description:"shipping company"`                                 // shipping company
+	TrackingNo       string      `json:"trackingNo"       orm:"tracking_no"       description:"waybill number"`                                   // waybill number
+	ShippedAt        *gtime.Time `json:"shippedAt"        orm:"shipped_at"        description:""`                                                 //
+	ConfirmDeadline  *gtime.Time `json:"confirmDeadline"  orm:"confirm_deadline"  description:""`                                                 //
+	CompletedAt      *gtime.Time `json:"completedAt"      orm:"completed_at"      description:""`                                                 //
+	CompleteReason   string      `json:"completeReason"   orm:"complete_reason"   description:"USER_CONFIRMED or AUTO_CONFIRMED"`                 // USER_CONFIRMED or AUTO_CONFIRMED
 	CreatedAt        *gtime.Time `json:"createdAt"        orm:"created_at"        description:""`                                                 //
 	UpdatedAt        *gtime.Time `json:"updatedAt"        orm:"updated_at"        description:""`                                                 //
 }

@@ -29,6 +29,12 @@ type OrderInfo struct {
 	ExpiresAt        *gtime.Time //
 	ClosedAt         *gtime.Time //
 	PaidAt           *gtime.Time //
+	Carrier          any         // shipping company
+	TrackingNo       any         // waybill number
+	ShippedAt        *gtime.Time //
+	ConfirmDeadline  *gtime.Time //
+	CompletedAt      *gtime.Time //
+	CompleteReason   any         // USER_CONFIRMED or AUTO_CONFIRMED
 	CreatedAt        *gtime.Time //
 	UpdatedAt        *gtime.Time //
 }

@@ -101,6 +101,10 @@ func TestWhoMayCallWhat(t *testing.T) {
 			_, err := payments.PayOrder(c, &paymentv1.PayOrderRequest{})
 			return err
 		},
+		"ConfirmReceipt": func(c context.Context) error {
+			_, err := orders.ConfirmReceipt(c, &orderv1.ConfirmReceiptRequest{})
+			return err
+		},
 	}
 	public := map[string]func(context.Context) error{
 		"NotifyPayment": func(c context.Context) error {
@@ -116,6 +120,10 @@ func TestWhoMayCallWhat(t *testing.T) {
 		"GetOrder": func(c context.Context) error { _, err := orders.GetOrder(c, &orderv1.GetOrderRequest{}); return err },
 		"ListRefunds": func(c context.Context) error {
 			_, err := refunds.ListRefunds(c, &refundv1.ListRefundsRequest{})
+			return err
+		},
+		"ShipOrder": func(c context.Context) error {
+			_, err := orders.ShipOrder(c, &orderv1.ShipOrderRequest{})
 			return err
 		},
 	}

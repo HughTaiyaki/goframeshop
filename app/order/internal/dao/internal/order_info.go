@@ -38,6 +38,12 @@ type OrderInfoColumns struct {
 	ExpiresAt        string //
 	ClosedAt         string //
 	PaidAt           string //
+	Carrier          string // shipping company
+	TrackingNo       string // waybill number
+	ShippedAt        string //
+	ConfirmDeadline  string //
+	CompletedAt      string //
+	CompleteReason   string // USER_CONFIRMED or AUTO_CONFIRMED
 	CreatedAt        string //
 	UpdatedAt        string //
 }
@@ -61,6 +67,12 @@ var orderInfoColumns = OrderInfoColumns{
 	ExpiresAt:        "expires_at",
 	ClosedAt:         "closed_at",
 	PaidAt:           "paid_at",
+	Carrier:          "carrier",
+	TrackingNo:       "tracking_no",
+	ShippedAt:        "shipped_at",
+	ConfirmDeadline:  "confirm_deadline",
+	CompletedAt:      "completed_at",
+	CompleteReason:   "complete_reason",
 	CreatedAt:        "created_at",
 	UpdatedAt:        "updated_at",
 }

@@ -38,9 +38,9 @@ func (s *sRefund) Create(ctx context.Context, userID uint64, orderNo string, goo
 	if order == nil || order.UserID != userID {
 		return nil, service.ErrNotFound
 	}
-	// Only money that was paid can be refunded. No order can be PAID until
-	// the payment simulator exists, so this refuses everything for now.
-	if order.Status != service.StatusPaid {
+	// Only money that was paid can be refunded: PAID, and also after
+	// shipping (SHIPPED, COMPLETED).
+	if !service.Paid(order.Status) {
 		return nil, service.ErrFailedPrecondition
 	}
 	inOrder := false

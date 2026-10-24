@@ -34,7 +34,7 @@ type OrderCancelRes struct {
 
 type OrderListReq struct {
 	g.Meta `path:"/order" method:"get" tags:"订单" summary:"我的订单"`
-	Status string `json:"status" v:"in:,RESERVING,PENDING_PAYMENT,PAYMENT_CONFIRMING,PAID,EXCEPTION,CLOSING,CLOSED" dc:"按状态筛选，不填表示全部"`
+	Status string `json:"status" v:"in:,RESERVING,PENDING_PAYMENT,PAYMENT_CONFIRMING,PAID,EXCEPTION,CLOSING,CLOSED,SHIPPED,COMPLETED" dc:"按状态筛选，不填表示全部"`
 	Page   uint32 `json:"page"   v:"min:1"  d:"1"  dc:"页码"`
 	Size   uint32 `json:"size"   v:"max:50" d:"10" dc:"每页条数"`
 }
@@ -89,4 +89,13 @@ type RefundDetailReq struct {
 
 type RefundDetailRes struct {
 	*RefundView
+}
+
+type OrderConfirmReq struct {
+	g.Meta  `path:"/order/confirm" method:"post" tags:"订单" summary:"确认收货（只能确认自己已发货的订单；已完成时直接返回）"`
+	OrderNo string `json:"orderNo" v:"required|length:1,32" dc:"订单号"`
+}
+
+type OrderConfirmRes struct {
+	*OrderView
 }

@@ -55,6 +55,7 @@ var (
 			timing := service.Timing{
 				ReserveTimeout: g.Cfg().MustGet(ctx, "order.reserveTimeout", "60s").Duration(),
 				PaymentTimeout: g.Cfg().MustGet(ctx, "order.paymentTimeout", "15m").Duration(),
+				AutoConfirm:    g.Cfg().MustGet(ctx, "order.autoConfirm", "240h").Duration(),
 			}
 			interval := g.Cfg().MustGet(ctx, "order.recoveryInterval", "5s").Duration()
 
@@ -127,6 +128,7 @@ var (
 		orderv1.OrderService_CancelOrder_FullMethodName,
 		orderv1.OrderService_ListMyOrders_FullMethodName,
 		orderv1.OrderService_GetMyOrder_FullMethodName,
+		orderv1.OrderService_ConfirmReceipt_FullMethodName,
 		refundv1.RefundService_CreateRefund_FullMethodName,
 		refundv1.RefundService_ListMyRefunds_FullMethodName,
 		refundv1.RefundService_GetMyRefund_FullMethodName,
@@ -134,6 +136,7 @@ var (
 	adminMethods = []string{
 		orderv1.OrderService_ListOrders_FullMethodName,
 		orderv1.OrderService_GetOrder_FullMethodName,
+		orderv1.OrderService_ShipOrder_FullMethodName,
 		refundv1.RefundService_ListRefunds_FullMethodName,
 	}
 )

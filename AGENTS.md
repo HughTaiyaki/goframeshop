@@ -6,7 +6,7 @@
 
 ## 当前阶段
 
-已完成：本地基础设施、用户服务、interaction 服务、H5 网关、Ed25519 JWT 鉴权，后台的 admin、file 服务和 gateway-admin 图片上传，带 Redis 缓存的 goods 商品服务、库存预留与上下架，Elasticsearch 搜索服务，order 订单服务，banner 服务，支付模拟器与订单支付，RabbitMQ 事件（Outbox / Inbox），链路追踪，前台改资料、改密码和热门推荐，以及购物车（任务 0001–0016）。下一步见 `docs/index.md` 的"下一阶段"。
+已完成：本地基础设施、用户服务、interaction 服务、H5 网关、Ed25519 JWT 鉴权，后台的 admin、file 服务和 gateway-admin 图片上传，带 Redis 缓存的 goods 商品服务、库存预留与上下架，Elasticsearch 搜索服务，order 订单服务，banner 服务，支付模拟器与订单支付，RabbitMQ 事件（Outbox / Inbox），链路追踪，前台改资料、改密码和热门推荐，购物车，以及发货与收货（任务 0001–0017）。下一步见 `docs/index.md` 的"下一阶段"。
 
 在验收测试存在并通过之前，不得声称结算、支付、导购推荐或故障诊断已经实现。
 

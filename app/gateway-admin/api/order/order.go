@@ -14,4 +14,5 @@ type IOrderV1 interface {
 	OrderList(ctx context.Context, req *v1.OrderListReq) (res *v1.OrderListRes, err error)
 	OrderDetail(ctx context.Context, req *v1.OrderDetailReq) (res *v1.OrderDetailRes, err error)
 	RefundList(ctx context.Context, req *v1.RefundListReq) (res *v1.RefundListRes, err error)
+	OrderShip(ctx context.Context, req *v1.OrderShipReq) (res *v1.OrderShipRes, err error)
 }

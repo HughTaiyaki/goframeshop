@@ -126,6 +126,21 @@ func (f *fakeOrders) Transition(_ context.Context, id uint64, c service.Change) 
 	if c.ClosedAt != nil {
 		o.ClosedAt = c.ClosedAt
 	}
+	if c.Shipment != nil {
+		o.Carrier, o.TrackingNo = c.Shipment.Carrier, c.Shipment.TrackingNo
+	}
+	if c.ShippedAt != nil {
+		o.ShippedAt = c.ShippedAt
+	}
+	if c.ConfirmDeadline != nil {
+		o.ConfirmDeadline = c.ConfirmDeadline
+	}
+	if c.CompletedAt != nil {
+		o.CompletedAt = c.CompletedAt
+	}
+	if c.CompleteReason != "" {
+		o.CompleteReason = c.CompleteReason
+	}
 	return true, nil
 }
 
@@ -137,7 +152,8 @@ func (f *fakeOrders) Due(_ context.Context, now time.Time, _ int) ([]*service.Or
 		o := f.rows[id]
 		switch {
 		case o.Status == service.StatusReserving, o.Status == service.StatusClosing, o.Status == service.StatusPaymentConfirming,
-			o.Status == service.StatusPendingPayment && o.ExpiresAt != nil && !o.ExpiresAt.After(now):
+			o.Status == service.StatusPendingPayment && o.ExpiresAt != nil && !o.ExpiresAt.After(now),
+			o.Status == service.StatusShipped && o.ConfirmDeadline != nil && !o.ConfirmDeadline.After(now):
 			out = append(out, f.copyOf(o))
 		}
 	}
@@ -252,7 +268,7 @@ func (f *fixture) advance(d time.Duration) {
 
 const alice, bob uint64 = 1, 2
 
-var timing = service.Timing{ReserveTimeout: time.Minute, PaymentTimeout: 15 * time.Minute}
+var timing = service.Timing{ReserveTimeout: time.Minute, PaymentTimeout: 15 * time.Minute, AutoConfirm: 240 * time.Hour}
 
 func newFixture() *fixture {
 	f := &fixture{orders: newFakeOrders(), inventory: &fakeInventory{}, notices: &fakeNotices{}, now: time.Date(2026, 10, 20, 10, 0, 0, 0, time.UTC)}
