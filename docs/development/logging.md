@@ -89,5 +89,5 @@ GOFRAMESHOP_IT=1 go test ./utility/eventbus/ -run Inbox   # message.redelivered�
 
 ## 7. 已知局限
 
-- 日志还只写到每个进程的标准输出，没有集中收集。收集和查询放到指标那一轮，和 Collector 一起做。
+- ~~日志只写到每个进程的标准输出~~：任务 0020 起同一份日志也经 OTLP 进 Loki，查询方法见 [`metrics.md`](metrics.md#4-查日志loki)。
 - `workflow.retry` 的 `attempt` 只是参考：管理员同意售后和恢复任务可能同时去退同一笔款（退款单号固定，模拟器只退一次），这时两边读到的次数可能相同。

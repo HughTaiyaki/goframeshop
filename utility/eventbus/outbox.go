@@ -262,3 +262,18 @@ func backoff(attempt int) time.Duration {
 	}
 	return time.Second << (attempt - 1)
 }
+
+// Backlog reports the events of db not yet published: how many, and when
+// the oldest was written (zero when there is none). It feeds the "outbox"
+// step of trade_workflow_backlog (design §9.2).
+func Backlog(ctx context.Context, db gdb.DB) (int64, time.Time, error) {
+	row, err := db.GetOne(ctx, "SELECT COUNT(*) AS n, MIN(created_at) AS oldest FROM "+outboxTable+" WHERE state = ?", statePending)
+	if err != nil {
+		return 0, time.Time{}, err
+	}
+	var oldest time.Time
+	if t := row["oldest"].GTime(); t != nil {
+		oldest = t.Time
+	}
+	return row["n"].Int64(), oldest, nil
+}

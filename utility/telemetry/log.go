@@ -92,7 +92,7 @@ func InstallLogging(ctx context.Context, service string) {
 	id := logIdentity{
 		service:     service,
 		version:     version(),
-		environment: g.Cfg().MustGet(ctx, "otel.environment", "local").String(),
+		environment: environment(ctx),
 	}
 	glog.SetDefaultHandler(id.handle)
 }
@@ -104,11 +104,17 @@ func JSONHandler(service, version, environment string) glog.Handler {
 }
 
 func (id logIdentity) handle(ctx context.Context, in *glog.HandlerInput) {
-	in.Buffer.Write(id.format(ctx, in))
+	record := id.record(ctx, in)
+	in.Buffer.Write(encode(record))
+	exportLog(ctx, in.Time, record)
 	in.Next(ctx)
 }
 
 func (id logIdentity) format(ctx context.Context, in *glog.HandlerInput) []byte {
+	return encode(id.record(ctx, in))
+}
+
+func (id logIdentity) record(ctx context.Context, in *glog.HandlerInput) *logRecord {
 	message := in.Content
 	if len(in.Values) > 0 {
 		if message != "" {
@@ -137,6 +143,10 @@ func (id logIdentity) format(ctx context.Context, in *glog.HandlerInput) []byte 
 		record.ErrorType = e.fields.ErrorType
 		record.Attributes = e.fields.Attributes
 	}
+	return &record
+}
+
+func encode(record *logRecord) []byte {
 	var buf bytes.Buffer
 	encoder := json.NewEncoder(&buf)
 	encoder.SetEscapeHTML(false)

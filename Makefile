@@ -6,7 +6,7 @@ env-check:
 
 .PHONY: infra-up
 infra-up:
-	@docker compose up -d mysql etcd redis elasticsearch rabbitmq otel-collector jaeger
+	@docker compose up -d mysql etcd redis elasticsearch rabbitmq otel-collector jaeger prometheus loki
 
 .PHONY: infra-down
 infra-down:
@@ -41,7 +41,7 @@ infra-ps:
 
 .PHONY: infra-logs
 infra-logs:
-	@docker compose logs -f mysql etcd redis elasticsearch rabbitmq otel-collector jaeger
+	@docker compose logs -f mysql etcd redis elasticsearch rabbitmq otel-collector jaeger prometheus loki
 
 .PHONY: verify
 verify:

@@ -2,6 +2,7 @@ package order
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"testing"
 
@@ -130,5 +131,29 @@ func TestRecoveryLogsRetries(t *testing.T) {
 	f.svc.Recover(ctx) // expired PENDING_PAYMENT: closes, not a retry
 	if n := len(logs.Events(telemetry.EventWorkflowRetry)); n != 1 {
 		t.Fatalf("%d retries after an expiry, want still 1", n)
+	}
+}
+
+// trade_order_create_total's outcome label, for every way a submit ends.
+func TestCreateOutcome(t *testing.T) {
+	order := func(status string) *service.Order { return &service.Order{Status: status} }
+	for name, c := range map[string]struct {
+		order     *service.Order
+		err       error
+		duplicate bool
+		want      string
+	}{
+		"payable":           {order(service.StatusPendingPayment), nil, false, "pending_payment"},
+		"reservation open":  {order(service.StatusReserving), nil, false, "reserving"},
+		"no stock":          {order(service.StatusClosed), nil, false, "rejected"},
+		"retry of a submit": {order(service.StatusPendingPayment), nil, true, "duplicate"},
+		"bad request":       {nil, service.ErrInvalidArgument, false, "invalid"},
+		"request id reused": {nil, service.ErrIdempotencyConflict, false, "invalid"},
+		"goods off shelf":   {nil, service.ErrGoodsUnavailable, false, "rejected"},
+		"database down":     {nil, errors.New("connection refused"), false, "error"},
+	} {
+		if got := createOutcome(c.order, c.err, c.duplicate); got != c.want {
+			t.Errorf("%s: %s, want %s", name, got, c.want)
+		}
 	}
 }

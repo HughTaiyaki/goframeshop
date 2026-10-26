@@ -1,0 +1,33 @@
+# Alerts of design §9.3. The thresholds are lab starting values, not
+# production SLOs. An alert names the service, the environment and what was
+# measured; it never names a fault that was injected.
+groups:
+  - name: trade
+    rules:
+      # One minute of calls from service to peer: more than 5% technical
+      # errors, out of at least 20 calls.
+      - alert: TradeRpcErrorRateHigh
+        expr: |
+          (
+            sum by (service, environment, peer) (rate(trade_rpc_duration_seconds_count{outcome="error"}[1m]))
+            /
+            sum by (service, environment, peer) (rate(trade_rpc_duration_seconds_count[1m]))
+          ) > 0.05
+          and
+          sum by (service, environment, peer) (increase(trade_rpc_duration_seconds_count[1m])) >= 20
+        for: 30s
+        labels:
+          severity: page
+        annotations:
+          summary: "{{ $labels.service }} → {{ $labels.peer }}: {{ $value | humanizePercentage }} of calls failed in the last minute"
+          metric: trade_rpc_duration_seconds_count
+
+      # Background work waiting longer than 30 seconds at one step.
+      - alert: TradeWorkflowStuck
+        expr: max by (service, environment, step) (trade_workflow_oldest_age_seconds) > 30
+        for: 15s
+        labels:
+          severity: page
+        annotations:
+          summary: "{{ $labels.service }}: the oldest {{ $labels.step }} work has waited {{ $value | humanizeDuration }}"
+          metric: trade_workflow_oldest_age_seconds

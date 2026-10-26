@@ -26,7 +26,7 @@
 - `app/banner`（gRPC `:31008`，库 `banner`）：首页轮播图和手工位。列表公开；写接口只接受管理员令牌。
 - Redis 7.4.2（`:6379`）：只做缓存，不持久化。Elasticsearch 8.11.0（`:9200`）：搜索索引，可以随时从 MySQL 重建。
 - 结构化日志：所有进程每行一个 JSON 对象（详细设计 §9.1），带链路 ID 和 7 个业务事件，写出前脱敏。
-- OpenTelemetry Collector（`:4317`）+ Jaeger（界面 `:16686`）：链路追踪。全部进程接入，跨 HTTP、gRPC、RabbitMQ 和后台任务；令牌、带值 SQL 等敏感内容在导出前去掉。
+- OpenTelemetry Collector（`:4317`）收集链路、指标、日志：链路进 Jaeger（界面 `:16686`），指标进 Prometheus（`:9090`，带告警规则），日志进 Loki（`:3100`）。全部进程接入，跨 HTTP、gRPC、RabbitMQ 和后台任务；令牌、带值 SQL 等敏感内容在导出前去掉。
 - RabbitMQ 4.2.0（`:5672`，管理界面 `:15672`）：服务之间的事件。事件先和业务数据一起写进各服务的 `outbox_event`，再由投递器发出；消费方用 `inbox_event` 去重。现在有三条：订单到期（准时关单）、商品变更（banner 手工位跟随）、下单成功（从购物车移除已购商品）。
 
 **交易闭环已完成**：浏览 → 热门 → 加购 → 下单 → 支付 → 发货 → 收货 → 售后审批与退款。
@@ -54,6 +54,7 @@
 | RabbitMQ、事件、Outbox / Inbox、延迟关单、手工位跟随商品、下单后清购物车 | [`development/events.md`](development/events.md) |
 | 链路追踪、Jaeger、span 脱敏 | [`development/tracing.md`](development/tracing.md) |
 | 日志格式、业务事件、日志脱敏 | [`development/logging.md`](development/logging.md) |
+| 指标、告警、Prometheus、在 Loki 查日志 | [`development/metrics.md`](development/metrics.md) |
 | 首页轮播图、手工位 | [`development/banner-service.md`](development/banner-service.md) |
 | 开发或调试 H5 网关 | [`tutorial/01-一次请求的完整旅程.md`](tutorial/01-一次请求的完整旅程.md) |
 | 新增建表脚本、补建本地库 | [`setup/local-environment.md`](setup/local-environment.md#5-启动-mysql-和-etcd)（`make db-init`） |
@@ -105,13 +106,13 @@ cd app/gateway-h5  && go run .   # 终端 3，HTTP :8199
 - [`tasks/0017-shipping-and-receipt.md`](../tasks/0017-shipping-and-receipt.md)：发货、确认收货、到期自动确认。
 - [`tasks/0018-after-sale-refunds.md`](../tasks/0018-after-sale-refunds.md)：售后审批、按商品退款、模拟器部分退款。
 - [`tasks/0019-structured-logging.md`](../tasks/0019-structured-logging.md)：JSON 结构化日志、业务事件、日志脱敏。
+- [`tasks/0020-metrics-and-alerts.md`](../tasks/0020-metrics-and-alerts.md)：指标、告警、日志集中收集到 Loki。
 
 ## 下一阶段
 
-交易闭环已经完成，接下来在完整流程上做可观测性，为日志诊断 Agent 准备条件。
+交易闭环和可观测性（链路、日志、指标与告警）都已完成，日志诊断 Agent 需要的三样信号都能集中查询。接下来：
 
-1. **0020 指标与告警**（§9.2、§9.3）：Prometheus，`trade_rpc_duration_seconds`、待处理事件积压、未完成的退款（技术退款、售后退款的 `attempts`）等；告警规则；同时把日志集中收集到 Collector，能按字段查询。三样齐了，就具备日志诊断 Agent 的前提。
-2. **0021 故障实验**：把详细设计 §10 的 T1–T10 做成可以重复执行的测试。
-3. 网关把 gRPC 状态码映射为 HTTP 状态码（现在所有业务错误都是 HTTP 200，只靠响应体 `code` 区分）；把集成测试扩展到其他 repository；事件的持久重试表与保留期清理。
+1. **0021 故障实验**：把详细设计 §10 的 T1–T10 做成可以重复执行的测试。
+2. 网关把 gRPC 状态码映射为 HTTP 状态码（现在所有业务错误都是 HTTP 200，只靠响应体 `code` 区分）；把集成测试扩展到其他 repository；事件的持久重试表与保留期清理。
 
 优惠券不在第一版交易验收范围内（详细设计 §1）。如果要做，按订单状态机设计（下单锁券、支付核销、取消或退款退券），不照搬教程的 CRUD 加注册送券。

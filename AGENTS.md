@@ -6,7 +6,7 @@
 
 ## 当前阶段
 
-已完成：本地基础设施、用户服务、interaction 服务、H5 网关、Ed25519 JWT 鉴权，后台的 admin、file 服务和 gateway-admin 图片上传，带 Redis 缓存的 goods 商品服务、库存预留与上下架，Elasticsearch 搜索服务，order 订单服务，banner 服务，支付模拟器与订单支付，RabbitMQ 事件（Outbox / Inbox），链路追踪，前台改资料、改密码和热门推荐，购物车，发货与收货，售后审批与按商品退款（任务 0001–0018，交易闭环已完成），以及结构化日志（任务 0019）。下一步见 `docs/index.md` 的"下一阶段"。
+已完成：本地基础设施、用户服务、interaction 服务、H5 网关、Ed25519 JWT 鉴权，后台的 admin、file 服务和 gateway-admin 图片上传，带 Redis 缓存的 goods 商品服务、库存预留与上下架，Elasticsearch 搜索服务，order 订单服务，banner 服务，支付模拟器与订单支付，RabbitMQ 事件（Outbox / Inbox），链路追踪，前台改资料、改密码和热门推荐，购物车，发货与收货，售后审批与按商品退款（任务 0001–0018，交易闭环已完成），结构化日志（任务 0019），以及指标、告警与日志集中收集（任务 0020）。下一步见 `docs/index.md` 的"下一阶段"。
 
 在验收测试存在并通过之前，不得声称结算、支付、导购推荐或故障诊断已经实现。
 
@@ -32,6 +32,7 @@
 - RabbitMQ、事件、Outbox / Inbox：`docs/development/events.md`
 - 链路追踪、span 脱敏：`docs/development/tracing.md`
 - 日志格式、业务事件、日志脱敏：`docs/development/logging.md`
+- 指标、告警、Prometheus、Loki：`docs/development/metrics.md`
 - 服务边界或开发顺序：`docs/architecture/overview.md`
 - 原始教程与本项目决策的差异：`docs/setup/source-notes.md`
 - 网关、HTTP 转 gRPC、服务发现、令牌传递：`docs/tutorial/01-一次请求的完整旅程.md`
@@ -91,6 +92,7 @@ GOFRAMESHOP_IT=1 go test ./app/goods/internal/repository/ ./app/search/internal/
 - 缓存只能做优化：Redis 出错时必须回退到 MySQL；每个写操作成功后都要删除受影响的缓存键（包括"不存在"标记），并补测试证明这一点。
 - 判断下游 gRPC 错误码用 `utility.RPCCode`，不要用 `status.Code`（grpcx 客户端会改写错误）。
 - 日志中不得出现缓存值、令牌、密码或请求正文。
+- 指标名和标签按详细设计 §9.2：名字定义在 `utility/telemetry/metrics.go`，每个数据点只带 `service`、`environment` 和契约列出的标签，取值必须是有限集合；订单号、用户 ID、链路 ID、商品 ID 不得做标签。新的后台工作要加进 `trade_workflow_backlog` 的某个 `step`。
 - 业务事实（状态变化、库存操作、付款、退款、重试、重复投递）用 `telemetry.Event` 记录，事件名用 `utility/telemetry/log.go` 里的常量，只能新增不能改名；`attributes` 只放 ID、状态、错误码、次数。只有改到行的一方记录状态变化。
 - 库存只能由库存账本的事务修改，每个事务先按 goods_id 顺序锁库存行；改动库存逻辑必须跑 `GOFRAMESHOP_IT=1` 的集成测试。
 - 修改 goods 表结构时，同步修改 `app/search/internal/source/mysql.go` 的 `docQuery`，并检查 search 的 `idColumns`。

@@ -75,7 +75,35 @@ func New(d Deps) service.IOrder {
 	}
 }
 
-func (s *sOrder) Create(ctx context.Context, userID uint64, in *service.CreateInput) (*service.Order, error) {
+func (s *sOrder) Create(ctx context.Context, userID uint64, in *service.CreateInput) (order *service.Order, err error) {
+	duplicate := false
+	defer func() { telemetry.RecordOrderCreate(ctx, createOutcome(order, err, duplicate)) }()
+	return s.create(ctx, userID, in, &duplicate)
+}
+
+// createOutcome is the outcome label of trade_order_create_total.
+func createOutcome(order *service.Order, err error, duplicate bool) string {
+	switch {
+	case errors.Is(err, service.ErrInvalidArgument), errors.Is(err, service.ErrIdempotencyConflict):
+		return "invalid"
+	case errors.Is(err, service.ErrGoodsUnavailable):
+		return "rejected"
+	case err != nil:
+		return "error"
+	case duplicate:
+		return "duplicate"
+	}
+	switch order.Status {
+	case service.StatusReserving:
+		return "reserving"
+	case service.StatusClosed, service.StatusClosing:
+		return "rejected" // no stock, or the goods went off shelf
+	default:
+		return "pending_payment"
+	}
+}
+
+func (s *sOrder) create(ctx context.Context, userID uint64, in *service.CreateInput, duplicate *bool) (*service.Order, error) {
 	items, err := normalize(in)
 	if err != nil {
 		return nil, err
@@ -87,6 +115,7 @@ func (s *sOrder) Create(ctx context.Context, userID uint64, in *service.CreateIn
 	if existing, err := s.orders.FindByRequest(ctx, userID, in.RequestID); err != nil {
 		return nil, err
 	} else if existing != nil {
+		*duplicate = true
 		return sameRequest(existing, hash)
 	}
 
@@ -143,6 +172,7 @@ func (s *sOrder) Create(ctx context.Context, userID uint64, in *service.CreateIn
 		if findErr != nil || existing == nil {
 			return nil, err
 		}
+		*duplicate = true
 		return sameRequest(existing, hash)
 	}
 	if err != nil {

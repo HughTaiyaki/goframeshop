@@ -11,6 +11,8 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+
+	"github.com/hughtaiyaki/goframeshop/utility/telemetry"
 )
 
 // DefaultRPCTimeout bounds every outbound gRPC call. gRPC has no default
@@ -21,9 +23,22 @@ const DefaultRPCTimeout = 3 * time.Second
 func GrpcClientTimeout(ctx context.Context, method string, req, reply interface{},
 	cc *grpc.ClientConn, invoker grpc.UnaryInvoker, opts ...grpc.CallOption,
 ) error {
-	ctx, cancel := context.WithTimeout(ctx, DefaultRPCTimeout)
+	return timedCall(ctx, DefaultRPCTimeout, method, req, reply, cc, invoker, opts...)
+}
+
+// timedCall bounds a client call by d and records it as
+// trade_rpc_duration_seconds (design §9.2). Every gRPC client in the shop
+// goes through GrpcClientTimeout or GrpcClientTimeoutOf, so every call
+// between services is measured here, once.
+func timedCall(ctx context.Context, d time.Duration, method string, req, reply any,
+	cc *grpc.ClientConn, invoker grpc.UnaryInvoker, opts ...grpc.CallOption,
+) error {
+	ctx, cancel := context.WithTimeout(ctx, d)
 	defer cancel()
-	return invoker(ctx, method, req, reply, cc, opts...)
+	started := time.Now()
+	err := invoker(ctx, method, req, reply, cc, opts...)
+	telemetry.RecordRPC(ctx, telemetry.PeerName(cc.Target()), method, telemetry.RPCOutcome(RPCCode(err)), time.Since(started))
+	return err
 }
 
 // RegisterEtcdResolver wires service discovery for both directions: a server
@@ -110,8 +125,6 @@ func GrpcClientTimeoutOf(d time.Duration) grpc.UnaryClientInterceptor {
 	return func(ctx context.Context, method string, req, reply any,
 		cc *grpc.ClientConn, invoker grpc.UnaryInvoker, opts ...grpc.CallOption,
 	) error {
-		ctx, cancel := context.WithTimeout(ctx, d)
-		defer cancel()
-		return invoker(ctx, method, req, reply, cc, opts...)
+		return timedCall(ctx, d, method, req, reply, cc, invoker, opts...)
 	}
 }

@@ -2,6 +2,20 @@
 
 每完成一个任务，在最上面加一节：新增了什么、改了什么、有哪些需要手动执行的步骤。细节和决定见对应的任务文件。
 
+## 0020 · 指标、告警与日志集中收集
+
+[任务文件](../tasks/0020-metrics-and-alerts.md) · [开发说明](development/metrics.md)
+
+- **新增基础设施** Prometheus 3.5.0（`:9090`）、Loki 3.5.3（`:3100`），`make infra-up` 一起启动；Collector 新增 metrics、logs 两条流水线，指标暴露在 `:8889`。
+- **指标**（详细设计 §9.2）：`trade_order_create_total`、`trade_order_pending_payment`、`trade_workflow_backlog`、`trade_workflow_oldest_age_seconds`、`trade_rpc_duration_seconds`、`trade_payment_callback_delay_seconds`、`trade_db_pool_in_use`、`trade_db_pool_limit`、`trade_db_acquire_timeout_total`（另有 `trade_db_acquire_wait_seconds_total`）。每个数据点带 `service`、`environment`，其他标签只有契约列出的那些。
+- **告警**（§9.3）：`TradeRpcErrorRateHigh`（1 分钟技术错误率 > 5% 且至少 20 次调用）、`TradeWorkflowStuck`（最老的待处理工作 > 30 秒）。
+- **日志集中收集**：JSON 日志同时经 OTLP 发到 Loki，可以按 `order_id`、`event_name`、`trace_id` 查询。
+- **自动接入**：所有 gRPC 客户端调用在共用的超时拦截器里计时；`telemetry.Start` 按配置为每个数据库组注册连接池指标。
+- **依赖** 新增 OpenTelemetry 指标 SDK、`otlpmetricgrpc`（v1.38.0）和日志 SDK、`otlploggrpc`（v0.14.0）。GoFrame 仍为 v2.10.2。
+- **需要手动执行**
+  - `make infra-up`（拉取 Prometheus、Loki 镜像，重建 Collector）。
+  - 重启所有服务。
+
 ## 0019 · 结构化日志
 
 [任务文件](../tasks/0019-structured-logging.md) · [开发说明](development/logging.md)

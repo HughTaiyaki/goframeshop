@@ -153,6 +153,7 @@ func (s *sOrder) confirm(ctx context.Context, order *service.Order, p *service.P
 	switch outcome {
 	case service.PaidConfirming:
 		logTransition(ctx, order.No, service.StatusPendingPayment, service.StatusPaymentConfirming, "")
+		telemetry.RecordPaymentCallbackDelay(ctx, s.now().Sub(paidAt))
 		g.Log().Infof(ctx, "order %s: payment %s confirmed (tx %s); committing stock", order.No, p.ID, p.TxID)
 		s.commit(ctx, order)
 	case service.PaidLate:

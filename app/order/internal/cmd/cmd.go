@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"github.com/gogf/gf/contrib/rpc/grpcx/v2"
@@ -24,6 +25,7 @@ import (
 	"github.com/hughtaiyaki/goframeshop/utility"
 	"github.com/hughtaiyaki/goframeshop/utility/eventbus"
 	"github.com/hughtaiyaki/goframeshop/utility/rabbitmq"
+	"github.com/hughtaiyaki/goframeshop/utility/telemetry"
 )
 
 var (
@@ -95,6 +97,13 @@ var (
 				events.NewExpiry(dao.OrderInfo.DB(), orders, time.Now).Handle)
 
 			go runRecovery(ctx, orders, refunds, interval)
+			// Metrics read on every collection (design §9.2).
+			if err := errors.Join(
+				telemetry.ObserveWorkflow(repository.Backlog),
+				telemetry.ObservePendingPayment(repository.CountPendingPayment),
+			); err != nil {
+				return err
+			}
 			newServer(userKey, adminKey, orders, refunds).Run()
 			return nil
 		},

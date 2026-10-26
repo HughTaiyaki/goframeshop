@@ -22,6 +22,7 @@ import (
 	"github.com/hughtaiyaki/goframeshop/utility"
 	"github.com/hughtaiyaki/goframeshop/utility/eventbus"
 	"github.com/hughtaiyaki/goframeshop/utility/rabbitmq"
+	"github.com/hughtaiyaki/goframeshop/utility/telemetry"
 )
 
 var (
@@ -66,6 +67,14 @@ var (
 				Lease:    15 * time.Second,
 				Batch:    100,
 			}, time.Now).Run(ctx)
+			// The outbox is the goods service's only background work
+			// (trade_workflow_backlog, step "outbox").
+			if err := telemetry.ObserveWorkflow(func(ctx context.Context) (map[string]telemetry.Backlog, error) {
+				n, oldest, err := eventbus.Backlog(ctx, dao.GoodsInfo.DB())
+				return map[string]telemetry.Backlog{"outbox": {Count: n, Oldest: oldest}}, err
+			}); err != nil {
+				return err
+			}
 			// Take the goods of orders checked out from the cart out of it.
 			go rabbitmq.Consume(ctx, amqpURL, rabbitmq.QueueCartOrderPlaced, 16, events.NewCart(dao.CartItem.DB()).Handle)
 			newServer(admin, order, user).Run()

@@ -1,7 +1,7 @@
-# OpenTelemetry Collector: every service sends its spans here (OTLP gRPC
-# :4317), and the collector forwards them to Jaeger. Services never talk to
-# Jaeger directly, so the trace backend can change without touching them,
-# and logs and metrics can later take the same road (design §3.2).
+# OpenTelemetry Collector: every service sends its spans, metrics and logs
+# here (OTLP gRPC :4317). Traces go on to Jaeger, metrics are exposed to
+# Prometheus on :8889, logs go to Loki. Services never talk to a backend
+# directly, so each one can change without touching them (design §3.2).
 #
 # Sensitive values are already removed inside each service before export
 # (utility/telemetry). transform/scrub below is the second line of defence,
@@ -44,9 +44,34 @@ exporters:
     tls:
       insecure: true
 
+  # Prometheus scrapes this. The services name their metrics exactly as in
+  # design §9.2 and label every point with service and environment, so no
+  # suffixes are added and no resource attributes are turned into labels.
+  prometheus:
+    endpoint: 0.0.0.0:8889
+    add_metric_suffixes: false
+    resource_to_telemetry_conversion:
+      enabled: false
+    metric_expiration: 5m
+
+  # Loki's native OTLP endpoint. Logs are already redacted in each service
+  # (utility/telemetry/log.go).
+  otlphttp/loki:
+    endpoint: http://loki:3100/otlp
+    tls:
+      insecure: true
+
 service:
   pipelines:
     traces:
       receivers: [otlp]
       processors: [memory_limiter, transform/scrub, batch]
       exporters: [otlp/jaeger]
+    metrics:
+      receivers: [otlp]
+      processors: [memory_limiter, batch]
+      exporters: [prometheus]
+    logs:
+      receivers: [otlp]
+      processors: [memory_limiter, batch]
+      exporters: [otlphttp/loki]

@@ -13,6 +13,7 @@ package telemetry
 import (
 	"context"
 	"crypto/rand"
+	"errors"
 	"os"
 	"runtime/debug"
 	"time"
@@ -32,11 +33,12 @@ import (
 // itself (events, background work).
 const Instrumentation = "github.com/hughtaiyaki/goframeshop"
 
-// Init installs the global tracer provider for service, configured from
-// otel.endpoint (host:port of the collector's OTLP gRPC receiver, or env
-// OTEL_ENDPOINT), otel.sampleRatio (default 1) and otel.environment
-// (default "local"). With no endpoint, tracing stays off and nothing is
-// exported. The returned function flushes pending spans; call it on exit.
+// Init installs the global tracer, meter and log providers for service,
+// configured from otel.endpoint (host:port of the collector's OTLP gRPC
+// receiver, or env OTEL_ENDPOINT), otel.sampleRatio (default 1) and
+// otel.environment (default "local"). With no endpoint, nothing is exported:
+// tracing and metrics stay off and logs go to stdout only. The returned
+// function flushes whatever is pending; call it on exit.
 func Init(ctx context.Context, service string) (func(context.Context) error, error) {
 	// Always propagate trace context, even with tracing off, so a service
 	// in the middle does not break the chain for the others.
@@ -47,18 +49,18 @@ func Init(ctx context.Context, service string) (func(context.Context) error, err
 		endpoint = os.Getenv("OTEL_ENDPOINT")
 	}
 	if endpoint == "" {
-		g.Log().Info(ctx, "tracing is off: otel.endpoint is not set")
+		g.Log().Info(ctx, "telemetry export is off: otel.endpoint is not set")
 		return func(context.Context) error { return nil }, nil
-	}
-	exporter, err := otlptracegrpc.New(ctx, otlptracegrpc.WithEndpoint(endpoint), otlptracegrpc.WithInsecure())
-	if err != nil {
-		return nil, err
 	}
 	res, err := resource.Merge(resource.Default(), resource.NewSchemaless(
 		semconv.ServiceName(service),
 		semconv.ServiceVersion(version()),
-		attribute.String("deployment.environment.name", g.Cfg().MustGet(ctx, "otel.environment", "local").String()),
+		attribute.String("deployment.environment.name", environment(ctx)),
 	))
+	if err != nil {
+		return nil, err
+	}
+	exporter, err := otlptracegrpc.New(ctx, otlptracegrpc.WithEndpoint(endpoint), otlptracegrpc.WithInsecure())
 	if err != nil {
 		return nil, err
 	}
@@ -69,8 +71,25 @@ func Init(ctx context.Context, service string) (func(context.Context) error, err
 		sdktrace.WithBatcher(&redactingExporter{next: exporter}, sdktrace.WithBatchTimeout(time.Second)),
 	)
 	otel.SetTracerProvider(provider)
-	g.Log().Infof(ctx, "tracing on: service %s exports to %s (sample ratio %.2f)", service, endpoint, ratio)
-	return provider.Shutdown, nil
+	stopMetrics, err := InitMetrics(ctx, endpoint, res)
+	if err != nil {
+		return nil, err
+	}
+	stopLogs, err := initLogExport(ctx, endpoint, res)
+	if err != nil {
+		return nil, err
+	}
+	g.Log().Infof(ctx, "telemetry on: service %s exports traces, metrics and logs to %s (trace sample ratio %.2f)", service, endpoint, ratio)
+	return func(ctx context.Context) error {
+		// Logs last, so the shutdown of the others can still be logged.
+		return errors.Join(provider.Shutdown(ctx), stopMetrics(ctx), stopLogs(ctx))
+	}, nil
+}
+
+// environment is deployment.environment.name: otel.environment, default
+// "local" (design §9 uses "experiment" for the lab runs).
+func environment(ctx context.Context) string {
+	return g.Cfg().MustGet(ctx, "otel.environment", "local").String()
 }
 
 // version is the module version or VCS revision the binary was built from.
@@ -117,12 +136,15 @@ func Root(ctx context.Context, name string, attrs ...attribute.KeyValue) (contex
 // Quiet context for the process's own background work. The returned function flushes spans that
 // are still buffered; defer it.
 func Start(ctx context.Context, service string) (context.Context, func()) {
-	// Logs first, so every line the process writes is structured.
+	// Logs first, so every line the process writes is structured; metrics
+	// carry the same service and environment labels.
 	InstallLogging(ctx, service)
+	setIdentity(service, environment(ctx))
 	shutdown, err := Init(ctx, service)
 	if err != nil {
-		g.Log().Fatalf(ctx, "tracing setup failed: %v", err)
+		g.Log().Fatalf(ctx, "telemetry setup failed: %v", err)
 	}
+	observeDatabases(ctx)
 	return Quiet(ctx), func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
