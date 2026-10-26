@@ -8,6 +8,8 @@ import (
 	"testing"
 
 	"github.com/hughtaiyaki/goframeshop/app/order/internal/service"
+	"github.com/hughtaiyaki/goframeshop/utility/telemetry"
+	"github.com/hughtaiyaki/goframeshop/utility/telemetry/logcapture"
 )
 
 func TestApprovePaysTheLineBack(t *testing.T) {
@@ -126,4 +128,34 @@ func TestApproveAndRejectRace(t *testing.T) {
 		outcomes[row.Status]++
 	}
 	t.Logf("outcomes: %v", outcomes)
+}
+
+// After-sale refunds are logged as payment.refund.requested, failures with
+// their error type, and the worker's attempts as workflow.retry.
+func TestAfterSaleRefundsAreLogged(t *testing.T) {
+	logs := logcapture.Start(t)
+	ctx := context.Background()
+	svc, _, _, provider := setupAll()
+	r, _ := svc.Create(ctx, alice, "PAID-1", 10, "坏了")
+	provider.fail = true
+	svc.Approve(ctx, r.No, "")
+	provider.fail = false
+	svc.Retry(ctx)
+
+	requests := logs.Events(telemetry.EventPaymentRefundRequest)
+	if len(requests) != 2 {
+		t.Fatalf("%d refund events, want 2: %v", len(requests), requests)
+	}
+	failed, done := requests[0], requests[1]
+	if failed["order_id"] != "PAID-1" || failed["error.type"] == "" || failed.Attr("outcome") != "unknown" ||
+		failed.Attr("kind") != "after_sale" || failed.Attr("refund_id") != service.AfterSaleRefundID(r.No) || failed.Attr("attempt") != float64(1) {
+		t.Fatalf("failed attempt: %v", failed)
+	}
+	if done["error.type"] != "" || done.Attr("outcome") != "succeeded" || done.Attr("attempt") != float64(2) {
+		t.Fatalf("second attempt: %v", done)
+	}
+	retries := logs.Events(telemetry.EventWorkflowRetry)
+	if len(retries) != 1 || retries[0].Attr("step") != "after_sale_refund" || retries[0]["order_id"] != "PAID-1" {
+		t.Fatalf("workflow.retry: %v", retries)
+	}
 }

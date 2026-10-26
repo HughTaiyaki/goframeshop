@@ -2,6 +2,19 @@
 
 每完成一个任务，在最上面加一节：新增了什么、改了什么、有哪些需要手动执行的步骤。细节和决定见对应的任务文件。
 
+## 0019 · 结构化日志
+
+[任务文件](../tasks/0019-structured-logging.md) · [开发说明](development/logging.md)
+
+- **所有日志改为 JSON**：每行一个对象，字段按详细设计 §9.1：`timestamp`、`severity`、`service.name`、`service.version`、`deployment.environment.name`、`event.name`、`trace_id`、`span_id`、`operation_id`、`order_id`、`error.type`、`message`（另有 `attributes`、`error.stack`）。原有的日志调用不用改，GoFrame 自己的日志也是这个格式。
+- **链路 ID 单独成字段**，能直接在 Jaeger 打开；后台轮询的不采样链路留空，不伪造。
+- **7 个业务事件**：`order.transition`、`inventory.reserved`、`inventory.released`、`payment.observed`、`payment.refund.requested`、`message.redelivered`、`workflow.retry`。
+- **日志脱敏**：令牌、JWT、URL 和 DSN 里的账号密码、手机号在写出前去掉。
+- **新增** `telemetry.Event`（记录业务事件）、`utility/telemetry/logcapture`（测试里读取日志）。
+- **行为变化**：order 服务里记录状态变化、付款、退款的几条普通日志改成了对应的事件；`PaymentRepository.Refunded` 现在还返回是否把 `EXCEPTION` 订单改成了 `CLOSING`。
+- **配置**：`logger.format` 默认 `json`，设成 `text` 恢复文本格式。
+- **需要手动执行**：无（重启服务即可）。
+
 ## 0018 · 售后审批与按商品退款
 
 [任务文件](../tasks/0018-after-sale-refunds.md) · [开发说明](development/order-service.md#6-售后)

@@ -31,6 +31,7 @@ import (
 	"strings"
 
 	"github.com/hughtaiyaki/goframeshop/app/goods/internal/service"
+	"github.com/hughtaiyaki/goframeshop/utility/telemetry"
 )
 
 type sInventory struct {
@@ -45,7 +46,41 @@ func New(ledger service.Ledger) service.IInventory {
 // operation record is stored and the same id can be retried later.
 var errNotReady = errors.New("nothing to commit yet")
 
+// Reserve and Release log their outcome (inventory.reserved / released,
+// design §9.1) after the transaction has committed, so a rolled-back
+// attempt is never reported.
 func (s *sInventory) Reserve(ctx context.Context, operationID, orderID string, items []service.InventoryItem) (*service.OperationResult, error) {
+	result, err := s.reserve(ctx, operationID, orderID, items)
+	logOperation(ctx, telemetry.EventInventoryReserved, operationID, orderID, items, result, err)
+	return result, err
+}
+
+func (s *sInventory) Release(ctx context.Context, operationID, orderID string, items []service.InventoryItem) (*service.OperationResult, error) {
+	result, err := s.release(ctx, operationID, orderID, items)
+	logOperation(ctx, telemetry.EventInventoryReleased, operationID, orderID, items, result, err)
+	return result, err
+}
+
+func logOperation(ctx context.Context, name, operationID, orderID string, items []service.InventoryItem,
+	result *service.OperationResult, err error) {
+	if err != nil {
+		if errors.Is(err, service.ErrInvalidArgument) {
+			return // refused before any work: nothing happened to the ledger
+		}
+		errorType := "Internal"
+		if errors.Is(err, service.ErrIdempotencyConflict) {
+			errorType = "IDEMPOTENCY_CONFLICT"
+		}
+		telemetry.Event(ctx, name, telemetry.Fields{OrderID: orderID, OperationID: operationID, ErrorType: errorType},
+			"%s %s for order %s failed: %v", name, operationID, orderID, err)
+		return
+	}
+	telemetry.Event(ctx, name, telemetry.Fields{OrderID: orderID, OperationID: operationID, Attributes: map[string]any{
+		"outcome": result.Outcome, "replayed": result.Replayed, "lines": len(items),
+	}}, "%s %s for order %s: %s", name, operationID, orderID, result.Outcome)
+}
+
+func (s *sInventory) reserve(ctx context.Context, operationID, orderID string, items []service.InventoryItem) (*service.OperationResult, error) {
 	items, err := normalize(operationID, orderID, items)
 	if err != nil {
 		return nil, err
@@ -153,7 +188,7 @@ func (s *sInventory) Commit(ctx context.Context, operationID, orderID string) (*
 	return result, err
 }
 
-func (s *sInventory) Release(ctx context.Context, operationID, orderID string, items []service.InventoryItem) (*service.OperationResult, error) {
+func (s *sInventory) release(ctx context.Context, operationID, orderID string, items []service.InventoryItem) (*service.OperationResult, error) {
 	items, err := normalize(operationID, orderID, items)
 	if err != nil {
 		return nil, err
@@ -228,6 +263,7 @@ func (s *sInventory) run(ctx context.Context, op *service.Operation,
 			if err != nil {
 				return err
 			}
+			replayed := stored != nil
 			if stored == nil {
 				if err := tx.InsertOperation(op); err != nil {
 					return err
@@ -248,7 +284,7 @@ func (s *sInventory) run(ctx context.Context, op *service.Operation,
 			if err != nil {
 				return err
 			}
-			result = &service.OperationResult{OperationID: op.ID, Outcome: stored.Outcome, Reservations: reservations}
+			result = &service.OperationResult{OperationID: op.ID, Outcome: stored.Outcome, Reservations: reservations, Replayed: replayed}
 			return nil
 		})
 		if errors.Is(err, service.ErrOperationExists) {

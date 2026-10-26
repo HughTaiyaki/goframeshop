@@ -142,7 +142,9 @@ type PaymentRepository interface {
 	DueRefunds(ctx context.Context, limit int) ([]*TechRefund, error)
 	// Refunded marks the refund done; an EXCEPTION order moves on to
 	// CLOSING in the same transaction.
-	Refunded(ctx context.Context, refundID string) error
+	// Refunded also moves an EXCEPTION order to CLOSING and reports whether
+	// it did.
+	Refunded(ctx context.Context, refundID string) (orderClosing bool, err error)
 	RefundAttempted(ctx context.Context, refundID string) error
 }
 

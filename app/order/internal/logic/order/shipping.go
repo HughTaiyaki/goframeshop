@@ -6,8 +6,6 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"github.com/gogf/gf/v2/frame/g"
-
 	"github.com/hughtaiyaki/goframeshop/app/order/internal/service"
 )
 
@@ -42,7 +40,7 @@ func (s *sOrder) Ship(ctx context.Context, orderNo string, in service.Shipment) 
 			return nil, err
 		}
 		if changed {
-			g.Log().Infof(ctx, "order %s: shipped by %s, waybill %s", order.No, in.Carrier, in.TrackingNo)
+			logTransition(ctx, order.No, service.StatusPaid, service.StatusShipped, "")
 		}
 		// Changed or not, someone moved it on: answer from the row as it is.
 		if order, err = s.Get(ctx, orderNo); err != nil {
@@ -91,11 +89,15 @@ func (s *sOrder) ConfirmReceipt(ctx context.Context, userID uint64, orderNo stri
 	}
 	if order.Status == service.StatusShipped {
 		now := s.now()
-		if _, err := s.orders.Transition(ctx, order.ID, service.Change{
+		changed, err := s.orders.Transition(ctx, order.ID, service.Change{
 			From: []string{service.StatusShipped}, To: service.StatusCompleted,
 			CompletedAt: &now, CompleteReason: service.CompleteUserConfirmed,
-		}); err != nil {
+		})
+		if err != nil {
 			return nil, err
+		}
+		if changed {
+			logTransition(ctx, order.No, service.StatusShipped, service.StatusCompleted, service.CompleteUserConfirmed)
 		}
 		if order, err = s.Get(ctx, orderNo); err != nil {
 			return nil, err

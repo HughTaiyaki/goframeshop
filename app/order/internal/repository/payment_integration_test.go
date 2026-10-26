@@ -160,11 +160,11 @@ func TestIntegrationExceptionRefundCloses(t *testing.T) {
 	if err := payments.RefundAttempted(ctx, refund.ID); err != nil {
 		t.Fatal(err)
 	}
-	if err := payments.Refunded(ctx, refund.ID); err != nil {
-		t.Fatal(err)
+	if closing, err := payments.Refunded(ctx, refund.ID); err != nil || !closing {
+		t.Fatalf("refunded: closing=%v err=%v, want the EXCEPTION order moved to CLOSING", closing, err)
 	}
-	if err := payments.Refunded(ctx, refund.ID); err != nil {
-		t.Fatal(err)
+	if closing, err := payments.Refunded(ctx, refund.ID); err != nil || closing {
+		t.Fatalf("refunded again: closing=%v err=%v, want no second move", closing, err)
 	}
 	got, _ := orders.FindByNo(ctx, o.No)
 	payment, _ := payments.Find(ctx, paymentID)

@@ -113,13 +113,13 @@ publish order.payment_pending  attempt 4  ok
 
 ## 7. 日志和链路怎么对上
 
-GoFrame 的每一行日志都带着当前的链路 ID：
+任务 0019 起日志是 JSON，链路 ID 是单独的 `trace_id` 字段（见 [`logging.md`](logging.md)）：
 
-```text
-2026-10-21T19:54:36.879+08:00 [INFO] {5c087640125dd9a983f0f59709cf974a} order O...: payment time is up; closing (expiry message)
+```json
+{"severity":"INFO","service.name":"order-service","event.name":"order.transition","trace_id":"5c087640125dd9a983f0f59709cf974a", …}
 ```
 
-`{...}` 里就是 trace id。打开 `http://127.0.0.1:16686/trace/5c087640125dd9a983f0f59709cf974a` 就是同一件事的完整链路；反过来，在所有服务的日志里 grep 这个 ID，能找到这条链路上每个进程说过的话。
+打开 `http://127.0.0.1:16686/trace/5c087640125dd9a983f0f59709cf974a` 就是同一件事的完整链路；反过来，在所有服务的日志里按 `trace_id` 筛选，能找到这条链路上每个进程说过的话。后台轮询的链路不被记录，它们的日志 `trace_id` 为空。
 
 ## 8. 脱敏
 
@@ -175,6 +175,6 @@ GOFRAMESHOP_IT=1 go test ./utility/telemetry/ ./utility/eventbus/ -v
 ## 12. 已知局限
 
 - Jaeger 存在内存里，重启就清空。
-- 日志还是 GoFrame 的文本格式；JSON 结构化日志（`trace_id`、`span_id` 单独成字段）是下一轮。
+- ~~日志还是 GoFrame 的文本格式~~：任务 0019 起是 JSON，见 [`logging.md`](logging.md)。
 - search 的 binlog 同步、goods 的缓存删除重试没有单独的链路（轮询被静音了，工作本身也没有 Root）。
 - 以 `sampleRatio: 1` 记录全部链路，只适合实验环境。

@@ -32,6 +32,8 @@ import (
 	"github.com/hughtaiyaki/goframeshop/utility/eventbus"
 	"github.com/hughtaiyaki/goframeshop/utility/ittest"
 	"github.com/hughtaiyaki/goframeshop/utility/rabbitmq"
+	"github.com/hughtaiyaki/goframeshop/utility/telemetry"
+	"github.com/hughtaiyaki/goframeshop/utility/telemetry/logcapture"
 )
 
 type env struct {
@@ -243,6 +245,7 @@ func TestIntegrationRelay(t *testing.T) {
 
 func TestIntegrationInbox(t *testing.T) {
 	e := setup(t)
+	logs := logcapture.Start(t)
 	consumer := e.key + ".consumer"
 	body := func(id, payload string) []byte {
 		b, _ := json.Marshal(eventbus.Envelope{SchemaVersion: 1, EventID: id, Type: "it", AggregateID: "1", AggregateVersion: 1, Payload: json.RawMessage(payload)})
@@ -259,6 +262,12 @@ func TestIntegrationInbox(t *testing.T) {
 	}
 	if applied != 1 {
 		t.Fatalf("applied %d times", applied)
+	}
+	// The two repeats are logged as redeliveries (design §9.1).
+	redelivered := logs.Events(telemetry.EventMessageRedelivered)
+	if len(redelivered) != 2 || redelivered[0].Attr("consumer") != consumer || redelivered[0].Attr("event_id") != id ||
+		redelivered[0].Attr("event_type") != "it" {
+		t.Fatalf("message.redelivered: %v", redelivered)
 	}
 	// Same id, different payload: quarantined and acknowledged.
 	if _, err := eventbus.Handle(e.ctx, e.db, consumer, body(id, `{"a":2}`), apply); err != nil || applied != 1 {

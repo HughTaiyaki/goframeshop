@@ -173,8 +173,9 @@ func (r *paymentRepository) DueRefunds(ctx context.Context, limit int) ([]*servi
 	return out, nil
 }
 
-func (r *paymentRepository) Refunded(ctx context.Context, refundID string) error {
-	return dao.OrderInfo.Transaction(ctx, func(ctx context.Context, tx gdb.TX) error {
+func (r *paymentRepository) Refunded(ctx context.Context, refundID string) (bool, error) {
+	var closing bool
+	err := dao.OrderInfo.Transaction(ctx, func(ctx context.Context, tx gdb.TX) error {
 		columns := dao.TechRefund.Columns()
 		var refund *entity.TechRefund
 		err := dao.TechRefund.Ctx(ctx).TX(tx).Where(columns.RefundId, refundID).LockUpdate().Scan(&refund)
@@ -192,12 +193,18 @@ func (r *paymentRepository) Refunded(ctx context.Context, refundID string) error
 		}
 		// An EXCEPTION order waited for this refund; now it can close.
 		orderColumns := dao.OrderInfo.Columns()
-		_, err = dao.OrderInfo.Ctx(ctx).TX(tx).Data(orderColumns.Status, service.StatusClosing).
+		result, err := dao.OrderInfo.Ctx(ctx).TX(tx).Data(orderColumns.Status, service.StatusClosing).
 			Where(orderColumns.Id, refund.OrderId).
 			Where(orderColumns.Status, service.StatusException).
 			Update()
+		if err != nil {
+			return err
+		}
+		n, err := result.RowsAffected()
+		closing = n == 1
 		return err
 	})
+	return closing, err
 }
 
 func (r *paymentRepository) RefundAttempted(ctx context.Context, refundID string) error {

@@ -14,6 +14,7 @@ import (
 	"github.com/hughtaiyaki/goframeshop/app/order/internal/repository"
 	"github.com/hughtaiyaki/goframeshop/app/order/internal/service"
 	"github.com/hughtaiyaki/goframeshop/utility/eventbus"
+	"github.com/hughtaiyaki/goframeshop/utility/telemetry"
 )
 
 // ExpiryConsumer is the inbox name of the expiry consumer.
@@ -55,7 +56,9 @@ func (x *Expiry) Handle(ctx context.Context, d amqp.Delivery) error {
 		return err
 	}
 	if closed {
-		g.Log().Infof(ctx, "order %s: payment time is up; closing (expiry message)", payload.OrderNo)
+		telemetry.Event(ctx, telemetry.EventOrderTransition, telemetry.Fields{OrderID: payload.OrderNo, Attributes: map[string]any{
+			"from": service.StatusPendingPayment, "to": service.StatusClosing, "reason": service.ReasonPaymentTimeout,
+		}}, "order %s: payment time is up; closing (expiry message)", payload.OrderNo)
 		if err := x.orders.Settle(ctx, payload.OrderNo); err != nil {
 			g.Log().Warningf(ctx, "order %s: settle after expiry failed, the recovery scan will finish it: %v", payload.OrderNo, err)
 		}

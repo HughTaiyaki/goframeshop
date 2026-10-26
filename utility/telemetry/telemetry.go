@@ -113,10 +113,12 @@ func Root(ctx context.Context, name string, attrs ...attribute.KeyValue) (contex
 		trace.WithNewRoot(), trace.WithSpanKind(trace.SpanKindInternal), trace.WithAttributes(attrs...))
 }
 
-// Start is what every main calls first: Init, then a Quiet context for the
-// process's own background work. The returned function flushes spans that
+// Start is what every main calls first: structured logging, Init, then a
+// Quiet context for the process's own background work. The returned function flushes spans that
 // are still buffered; defer it.
 func Start(ctx context.Context, service string) (context.Context, func()) {
+	// Logs first, so every line the process writes is structured.
+	InstallLogging(ctx, service)
 	shutdown, err := Init(ctx, service)
 	if err != nil {
 		g.Log().Fatalf(ctx, "tracing setup failed: %v", err)

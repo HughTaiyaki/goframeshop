@@ -113,9 +113,10 @@ func (f *fakePayments) DueRefunds(_ context.Context, _ int) ([]*service.TechRefu
 	return out, nil
 }
 
-func (f *fakePayments) Refunded(_ context.Context, refundID string) error {
+func (f *fakePayments) Refunded(_ context.Context, refundID string) (bool, error) {
 	f.orders.mu.Lock()
 	defer f.orders.mu.Unlock()
+	closing := false
 	for _, r := range f.refunds {
 		if r.ID != refundID || r.State != service.TechRefundPending {
 			continue
@@ -124,9 +125,10 @@ func (f *fakePayments) Refunded(_ context.Context, refundID string) error {
 		f.payments[r.PaymentID].State = service.PaymentRefunded
 		if order := f.orders.rows[r.OrderID]; order.Status == service.StatusException {
 			order.Status = service.StatusClosing
+			closing = true
 		}
 	}
-	return nil
+	return closing, nil
 }
 
 func (f *fakePayments) RefundAttempted(_ context.Context, refundID string) error {

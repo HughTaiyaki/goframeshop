@@ -268,7 +268,46 @@ func (s *sOrder) transition(ctx context.Context, order *service.Order, c service
 		g.Log().Warningf(ctx, "order %s: %v -> %s failed, the worker will retry: %v", order.No, c.From, c.To, err)
 		return false
 	}
+	if changed {
+		logTransition(ctx, order.No, fromState(order.Status, c.From), c.To, c.CloseReason+c.CompleteReason)
+	}
 	return changed
+}
+
+// fromState is the state the order left: the one it was read in, when the
+// change applied to it, else the list of states the change allowed.
+func fromState(read string, from []string) string {
+	for _, f := range from {
+		if f == read {
+			return read
+		}
+	}
+	return strings.Join(from, "|")
+}
+
+// logTransition records order.transition (design §9.1) for a change that
+// really happened: only the caller whose conditional UPDATE won logs it.
+func logTransition(ctx context.Context, orderNo, from, to, reason string) {
+	attrs := map[string]any{"from": from, "to": to}
+	if reason != "" {
+		attrs["reason"] = reason
+	}
+	telemetry.Event(ctx, telemetry.EventOrderTransition, telemetry.Fields{OrderID: orderNo, Attributes: attrs},
+		"order %s %s -> %s", orderNo, from, to)
+}
+
+// retryStep names what the recovery worker is about to redo for an order,
+// or "" when driving it is not a retry (an expiry, an automatic receipt).
+func retryStep(status string) string {
+	switch status {
+	case service.StatusReserving:
+		return "reserve"
+	case service.StatusPaymentConfirming:
+		return "commit"
+	case service.StatusClosing:
+		return "close"
+	}
+	return ""
 }
 
 func (s *sOrder) Cancel(ctx context.Context, userID uint64, orderNo string) (*service.Order, error) {
@@ -305,6 +344,11 @@ func (s *sOrder) Recover(ctx context.Context) error {
 		// context and records nothing, so an idle pass costs no spans.
 		octx, span := telemetry.Root(ctx, "order.recover",
 			attribute.String("order.no", order.No), attribute.String("order.status", order.Status))
+		if step := retryStep(order.Status); step != "" {
+			telemetry.Event(octx, telemetry.EventWorkflowRetry, telemetry.Fields{
+				OrderID: order.No, Attributes: map[string]any{"step": step, "state": order.Status},
+			}, "order %s: retrying %s", order.No, step)
+		}
 		s.drive(octx, order, now)
 		span.End()
 	}

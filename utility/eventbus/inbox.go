@@ -6,6 +6,8 @@ import (
 
 	"github.com/gogf/gf/v2/database/gdb"
 	"github.com/gogf/gf/v2/frame/g"
+
+	"github.com/hughtaiyaki/goframeshop/utility/telemetry"
 )
 
 const (
@@ -67,7 +69,9 @@ func Handle(ctx context.Context, db gdb.DB, consumer string, body []byte, apply 
 		return false, quarantine(ctx, db, consumer, e.EventID, "event id reused with a different payload", body)
 	}
 	if !applied {
-		g.Log().Debugf(ctx, "consumer %s: event %s already processed; acknowledging", consumer, e.EventID)
+		telemetry.Event(ctx, telemetry.EventMessageRedelivered, telemetry.Fields{Attributes: map[string]any{
+			"consumer": consumer, "event_id": e.EventID, "event_type": e.Type,
+		}}, "consumer %s: event %s already processed; acknowledging", consumer, e.EventID)
 	}
 	return applied, nil
 }

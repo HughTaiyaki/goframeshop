@@ -147,8 +147,12 @@ func (s *sOrder) confirm(ctx context.Context, order *service.Order, p *service.P
 		g.Log().Warningf(ctx, "order %s: record payment %s: %v", order.No, p.ID, err)
 		return err
 	}
+	telemetry.Event(ctx, telemetry.EventPaymentObserved, telemetry.Fields{
+		OrderID: order.No, Attributes: map[string]any{"payment_id": p.ID, "outcome": outcome},
+	}, "order %s: payment %s observed (%s)", order.No, p.ID, outcome)
 	switch outcome {
 	case service.PaidConfirming:
+		logTransition(ctx, order.No, service.StatusPendingPayment, service.StatusPaymentConfirming, "")
 		g.Log().Infof(ctx, "order %s: payment %s confirmed (tx %s); committing stock", order.No, p.ID, p.TxID)
 		s.commit(ctx, order)
 	case service.PaidLate:
@@ -176,8 +180,11 @@ func (s *sOrder) commit(ctx context.Context, order *service.Order) {
 	default:
 		// The reservation is gone (released). The money must go back.
 		g.Log().Errorf(ctx, "order %s: commit refused with %s; refunding and closing", order.No, outcome)
-		if _, err := s.payments.Except(ctx, order.ID, service.PaymentID(order.No)); err != nil {
+		changed, err := s.payments.Except(ctx, order.ID, service.PaymentID(order.No))
+		if err != nil {
 			g.Log().Warningf(ctx, "order %s: move to EXCEPTION failed, the worker will retry: %v", order.No, err)
+		} else if changed {
+			logTransition(ctx, order.No, service.StatusPaymentConfirming, service.StatusException, service.ReasonInventoryConflict)
 		}
 	}
 }
@@ -198,18 +205,44 @@ func (s *sOrder) refundOne(ctx context.Context, r *service.TechRefund) {
 	ctx, span := telemetry.Root(ctx, "order.tech_refund",
 		attribute.String("refund.id", r.ID), attribute.String("refund.reason", r.Reason), attribute.Int("refund.attempt", r.Attempts+1))
 	defer span.End()
+	orderNo := s.orderNo(ctx, r.OrderID)
+	fields := telemetry.Fields{OrderID: orderNo, Attributes: map[string]any{
+		"refund_id": r.ID, "payment_id": r.PaymentID, "kind": "technical", "reason": r.Reason, "attempt": r.Attempts + 1,
+	}}
+	if r.Attempts > 0 {
+		telemetry.Event(ctx, telemetry.EventWorkflowRetry, telemetry.Fields{OrderID: orderNo, Attributes: map[string]any{
+			"step": "tech_refund", "refund_id": r.ID, "attempt": r.Attempts + 1,
+		}}, "refund %s: retrying", r.ID)
+	}
 	if err := s.provider.Refund(ctx, r.ID, r.PaymentID, r.AmountCents); err != nil {
-		g.Log().Warningf(ctx, "refund %s (%s, payment %s, attempt %d) failed, will retry: %v",
-			r.ID, r.Reason, r.PaymentID, r.Attempts+1, err)
+		fields.ErrorType = utility.RPCCode(err).String()
+		fields.Attributes["outcome"] = "unknown"
+		telemetry.Event(ctx, telemetry.EventPaymentRefundRequest, fields,
+			"refund %s (%s, payment %s, attempt %d) failed, will retry: %v", r.ID, r.Reason, r.PaymentID, r.Attempts+1, err)
 		span.SetStatus(codes.Error, err.Error())
 		if err := s.payments.RefundAttempted(ctx, r.ID); err != nil {
 			g.Log().Warningf(ctx, "refund %s: record attempt: %v", r.ID, err)
 		}
 		return
 	}
-	if err := s.payments.Refunded(ctx, r.ID); err != nil {
+	fields.Attributes["outcome"] = "succeeded"
+	telemetry.Event(ctx, telemetry.EventPaymentRefundRequest, fields,
+		"refund %s (%s): %d cents returned for payment %s", r.ID, r.Reason, r.AmountCents, r.PaymentID)
+	closing, err := s.payments.Refunded(ctx, r.ID)
+	if err != nil {
 		g.Log().Warningf(ctx, "refund %s: record success, will retry: %v", r.ID, err)
 		return
 	}
-	g.Log().Infof(ctx, "refund %s (%s): %d cents returned for payment %s", r.ID, r.Reason, r.AmountCents, r.PaymentID)
+	if closing {
+		logTransition(ctx, orderNo, service.StatusException, service.StatusClosing, "")
+	}
+}
+
+// orderNo looks up an order number for a log line; "" when it cannot.
+func (s *sOrder) orderNo(ctx context.Context, orderID uint64) string {
+	nos, err := s.orders.NosByID(ctx, []uint64{orderID})
+	if err != nil {
+		return ""
+	}
+	return nos[orderID]
 }

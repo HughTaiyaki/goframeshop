@@ -29,6 +29,7 @@ import (
 	"go.opentelemetry.io/otel/codes"
 
 	"github.com/hughtaiyaki/goframeshop/app/order/internal/service"
+	"github.com/hughtaiyaki/goframeshop/utility"
 	"github.com/hughtaiyaki/goframeshop/utility/telemetry"
 )
 
@@ -202,6 +203,9 @@ func (s *sRefund) Retry(ctx context.Context) error {
 		// One trace per request paid: the scan itself runs quiet.
 		rctx, span := telemetry.Root(ctx, "order.after_sale_refund",
 			attribute.String("refund.no", refund.No), attribute.Int("refund.attempt", refund.Attempts+1))
+		telemetry.Event(rctx, telemetry.EventWorkflowRetry, telemetry.Fields{OrderID: refund.OrderNo, Attributes: map[string]any{
+			"step": "after_sale_refund", "after_sale_no": refund.No, "attempt": refund.Attempts + 1,
+		}}, "after-sale %s: retrying the refund", refund.No)
 		if err := s.pay(rctx, refund); err != nil {
 			span.SetStatus(codes.Error, err.Error())
 		}
@@ -214,8 +218,14 @@ func (s *sRefund) Retry(ctx context.Context) error {
 // the answer. No answer (an error) leaves it APPROVED for the next Retry.
 func (s *sRefund) pay(ctx context.Context, refund *service.Refund) error {
 	refundID := service.AfterSaleRefundID(refund.No)
+	fields := telemetry.Fields{OrderID: refund.OrderNo, Attributes: map[string]any{
+		"refund_id": refundID, "payment_id": service.PaymentID(refund.OrderNo), "kind": "after_sale",
+		"after_sale_no": refund.No, "attempt": refund.Attempts + 1,
+	}}
 	if err := s.provider.Refund(ctx, refundID, service.PaymentID(refund.OrderNo), refund.AmountCents); err != nil {
-		g.Log().Warningf(ctx, "after-sale %s: refund %s (attempt %d) failed, will retry: %v",
+		fields.ErrorType = utility.RPCCode(err).String()
+		fields.Attributes["outcome"] = "unknown"
+		telemetry.Event(ctx, telemetry.EventPaymentRefundRequest, fields, "after-sale %s: refund %s (attempt %d) failed, will retry: %v",
 			refund.No, refundID, refund.Attempts+1, err)
 		if err := s.refunds.Attempted(ctx, refund.ID); err != nil {
 			g.Log().Warningf(ctx, "after-sale %s: record attempt: %v", refund.No, err)
@@ -229,7 +239,9 @@ func (s *sRefund) pay(ctx context.Context, refund *service.Refund) error {
 		g.Log().Warningf(ctx, "after-sale %s: record refunded, will retry: %v", refund.No, err)
 		return err
 	}
-	g.Log().Infof(ctx, "after-sale %s: %d cents returned for order %s", refund.No, refund.AmountCents, refund.OrderNo)
+	fields.Attributes["outcome"] = "succeeded"
+	telemetry.Event(ctx, telemetry.EventPaymentRefundRequest, fields,
+		"after-sale %s: %d cents returned for order %s", refund.No, refund.AmountCents, refund.OrderNo)
 	return nil
 }
 

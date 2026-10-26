@@ -65,6 +65,9 @@ type OperationResult struct {
 	OperationID  string
 	Outcome      string
 	Reservations []Reservation
+	// Replayed: the operation id was already recorded, so this is the stored
+	// outcome of an earlier call, not a new decision.
+	Replayed bool
 }
 
 // IInventory is the reservation application service.
