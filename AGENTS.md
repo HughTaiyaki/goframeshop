@@ -6,7 +6,7 @@
 
 ## 当前阶段
 
-已完成：本地基础设施、用户服务、interaction 服务、H5 网关、Ed25519 JWT 鉴权，后台的 admin、file 服务和 gateway-admin 图片上传，带 Redis 缓存的 goods 商品服务、库存预留与上下架，Elasticsearch 搜索服务，order 订单服务，banner 服务，支付模拟器与订单支付，RabbitMQ 事件（Outbox / Inbox），链路追踪，前台改资料、改密码和热门推荐，购物车，发货与收货，售后审批与按商品退款（任务 0001–0018，交易闭环已完成），结构化日志（任务 0019），以及指标、告警与日志集中收集（任务 0020）。下一步见 `docs/index.md` 的"下一阶段"。
+已完成：本地基础设施、用户服务、interaction 服务、H5 网关、Ed25519 JWT 鉴权，后台的 admin、file 服务和 gateway-admin 图片上传，带 Redis 缓存的 goods 商品服务、库存预留与上下架，Elasticsearch 搜索服务，order 订单服务，banner 服务，支付模拟器与订单支付，RabbitMQ 事件（Outbox / Inbox），链路追踪，前台改资料、改密码和热门推荐，购物车，发货与收货，售后审批与按商品退款（任务 0001–0018，交易闭环已完成），结构化日志（任务 0019），指标、告警与日志集中收集（任务 0020），以及故障实验（任务 0021）。下一步见 `docs/index.md` 的"下一阶段"。
 
 在验收测试存在并通过之前，不得声称结算、支付、导购推荐或故障诊断已经实现。
 
@@ -33,6 +33,7 @@
 - 链路追踪、span 脱敏：`docs/development/tracing.md`
 - 日志格式、业务事件、日志脱敏：`docs/development/logging.md`
 - 指标、告警、Prometheus、Loki：`docs/development/metrics.md`
+- 故障实验、failpoint、协议兼容：`docs/development/fault-experiments.md`
 - 服务边界或开发顺序：`docs/architecture/overview.md`
 - 原始教程与本项目决策的差异：`docs/setup/source-notes.md`
 - 网关、HTTP 转 gRPC、服务发现、令牌传递：`docs/tutorial/01-一次请求的完整旅程.md`
@@ -57,6 +58,7 @@ make infra-ps
 make db-init     # 已有数据卷时补执行建表脚本
 make jwt-keys    # 打印本地开发用的 Ed25519 密钥对
 make verify
+make fault-trade   # 故障实验，需要 Compose，且本地没有在跑 user、goods、order、paysim
 GOFRAMESHOP_IT=1 go test ./app/goods/internal/repository/ ./app/search/internal/index/ -run Integration   # 需要 Compose
 ```
 
@@ -83,6 +85,8 @@ GOFRAMESHOP_IT=1 go test ./app/goods/internal/repository/ ./app/search/internal/
 - 消费事件必须经过 `eventbus.Handle`，业务修改写在它给的事务里；事件是事实不是命令，处理前按自己的当前状态核对。
 - 新的路由键和队列只能加在 `utility/rabbitmq/topology.go`；发布是 mandatory 的，没有队列接收的事件会一直重试。
 - 跨服务的事件内容写在 `utility/eventbus/contracts.go`，只能加字段，不能改或删。
+- 改动下单、库存、支付、事件、恢复任务的代码后，运行 `make fault-trade`。protobuf 只能加字段；有意新增后用 `-update-proto-snapshot` 刷新 `tests/fault/testdata/proto_snapshot.json`，T10 会拦下改号、改类型、删字段不保留编号。
+- failpoint 只能用 `utility/failpoint.Inject` 加在两个步骤之间，名字写成 `服务.步骤.位置`，并在 `docs/development/fault-experiments.md` 登记、配一个实验。
 - 每个进程的 `main` 第一行调用 `telemetry.Start`。后台循环使用它返回的 Quiet 上下文，每一件真正的工作用 `telemetry.Root` 开新链路；不要让轮询记录 span。
 - span 里不得放令牌、密码、手机号、地址、支付凭证。新增依赖或功能会自动记录新的敏感字段时，先在 `utility/telemetry/redact.go` 加规则和测试，并同步 `deploy/otel/collector.yaml` 的 `transform/scrub`。
 - 不得新增公开的管理员注册接口。

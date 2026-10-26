@@ -12,6 +12,7 @@ import (
 
 	"github.com/hughtaiyaki/goframeshop/app/goods/internal/service"
 	"github.com/hughtaiyaki/goframeshop/utility"
+	"github.com/hughtaiyaki/goframeshop/utility/failpoint"
 )
 
 // StatusError translates an application error into a gRPC status. Unknown
@@ -27,6 +28,9 @@ func StatusError(err error) error {
 		return status.Error(code, code.String())
 	}
 	switch {
+	case errors.Is(err, failpoint.ErrInjected):
+		// A fault experiment: the work was done, the reply is "lost".
+		return status.Error(codes.Unavailable, "unavailable")
 	case errors.Is(err, service.ErrNoIdentity):
 		return status.Error(codes.Unauthenticated, "caller identity is missing")
 	case errors.Is(err, service.ErrNotFound):

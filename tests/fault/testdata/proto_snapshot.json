@@ -1,0 +1,768 @@
+{
+  "admin.v1.CreateAdminRequest": {
+    "1": "name string",
+    "2": "password string",
+    "3": "is_super bool"
+  },
+  "admin.v1.CreateAdminResponse": {
+    "1": "admin_id uint64"
+  },
+  "admin.v1.LoginRequest": {
+    "1": "name string",
+    "2": "password string"
+  },
+  "admin.v1.LoginResponse": {
+    "1": "token_type string",
+    "2": "access_token string",
+    "3": "expires_in_seconds uint32",
+    "4": "admin_id uint64",
+    "5": "name string",
+    "6": "is_super bool"
+  },
+  "cart.v1.AddCartItemRequest": {
+    "1": "goods_id uint64",
+    "2": "quantity uint32"
+  },
+  "cart.v1.CartItem": {
+    "1": "cart_item_id uint64",
+    "10": "updated_at google.protobuf.Timestamp",
+    "2": "goods_id uint64",
+    "3": "quantity uint32",
+    "4": "goods_name string",
+    "5": "price_cents uint64",
+    "6": "cover_url string",
+    "7": "available bool",
+    "8": "stock uint32",
+    "9": "created_at google.protobuf.Timestamp"
+  },
+  "cart.v1.CartItemResponse": {
+    "1": "item cart.v1.CartItem"
+  },
+  "cart.v1.DeleteCartItemsRequest": {
+    "1": "cart_item_ids repeated uint64"
+  },
+  "cart.v1.DeleteCartItemsResponse": {
+    "1": "deleted uint32"
+  },
+  "cart.v1.ListCartItemsRequest": {
+    "1": "page uint32",
+    "2": "size uint32"
+  },
+  "cart.v1.ListCartItemsResponse": {
+    "1": "items repeated cart.v1.CartItem",
+    "2": "page uint32",
+    "3": "size uint32",
+    "4": "total uint64"
+  },
+  "cart.v1.UpdateCartItemRequest": {
+    "1": "cart_item_id uint64",
+    "2": "quantity uint32"
+  },
+  "category.v1.Category": {
+    "1": "category_id uint64",
+    "2": "parent_id uint64",
+    "3": "level uint32",
+    "4": "name string",
+    "5": "icon_file_id uint64",
+    "6": "icon_url string",
+    "7": "sort uint32",
+    "8": "created_at google.protobuf.Timestamp",
+    "9": "updated_at google.protobuf.Timestamp"
+  },
+  "category.v1.CreateCategoryRequest": {
+    "1": "parent_id uint64",
+    "2": "name string",
+    "3": "icon_file_id uint64",
+    "4": "sort uint32"
+  },
+  "category.v1.CreateCategoryResponse": {
+    "1": "category_id uint64"
+  },
+  "category.v1.DeleteCategoryRequest": {
+    "1": "category_id uint64"
+  },
+  "category.v1.DeleteCategoryResponse": {},
+  "category.v1.ListAllCategoriesRequest": {},
+  "category.v1.ListAllCategoriesResponse": {
+    "1": "items repeated category.v1.Category"
+  },
+  "category.v1.ListCategoriesRequest": {
+    "1": "parent_id uint64",
+    "2": "page uint32",
+    "3": "size uint32"
+  },
+  "category.v1.ListCategoriesResponse": {
+    "1": "items repeated category.v1.Category",
+    "2": "page uint32",
+    "3": "size uint32",
+    "4": "total uint64"
+  },
+  "category.v1.UpdateCategoryRequest": {
+    "1": "category_id uint64",
+    "2": "name string",
+    "3": "icon_file_id uint64",
+    "4": "sort uint32"
+  },
+  "category.v1.UpdateCategoryResponse": {},
+  "collection.v1.Collection": {
+    "1": "collection_id uint64",
+    "2": "object_type uint32",
+    "3": "object_id uint64",
+    "4": "created_at google.protobuf.Timestamp"
+  },
+  "collection.v1.CreateCollectionRequest": {
+    "1": "object_type uint32",
+    "2": "object_id uint64"
+  },
+  "collection.v1.CreateCollectionResponse": {
+    "1": "collection_id uint64"
+  },
+  "collection.v1.DeleteCollectionRequest": {
+    "1": "collection_id uint64"
+  },
+  "collection.v1.DeleteCollectionResponse": {},
+  "collection.v1.ListCollectionsRequest": {
+    "1": "object_type uint32",
+    "2": "page uint32",
+    "3": "size uint32"
+  },
+  "collection.v1.ListCollectionsResponse": {
+    "1": "items repeated collection.v1.Collection",
+    "2": "page uint32",
+    "3": "size uint32",
+    "4": "total uint64"
+  },
+  "comment.v1.Comment": {
+    "1": "comment_id uint64",
+    "2": "parent_id uint64",
+    "3": "user_id uint64",
+    "4": "object_type uint32",
+    "5": "object_id uint64",
+    "6": "content string",
+    "7": "created_at google.protobuf.Timestamp"
+  },
+  "comment.v1.CreateCommentRequest": {
+    "1": "object_type uint32",
+    "2": "object_id uint64",
+    "3": "parent_id uint64",
+    "4": "content string"
+  },
+  "comment.v1.CreateCommentResponse": {
+    "1": "comment_id uint64"
+  },
+  "comment.v1.DeleteCommentRequest": {
+    "1": "comment_id uint64"
+  },
+  "comment.v1.DeleteCommentResponse": {},
+  "comment.v1.ListCommentsRequest": {
+    "1": "object_type uint32",
+    "2": "object_id uint64",
+    "3": "page uint32",
+    "4": "size uint32"
+  },
+  "comment.v1.ListCommentsResponse": {
+    "1": "items repeated comment.v1.Comment",
+    "2": "page uint32",
+    "3": "size uint32",
+    "4": "total uint64"
+  },
+  "consignee.v1.Consignee": {
+    "1": "consignee_id uint64",
+    "10": "created_at google.protobuf.Timestamp",
+    "11": "updated_at google.protobuf.Timestamp",
+    "2": "is_default bool",
+    "3": "name string",
+    "4": "phone string",
+    "5": "province string",
+    "6": "city string",
+    "7": "town string",
+    "8": "street string",
+    "9": "detail string"
+  },
+  "consignee.v1.CreateConsigneeRequest": {
+    "1": "is_default bool",
+    "2": "name string",
+    "3": "phone string",
+    "4": "province string",
+    "5": "city string",
+    "6": "town string",
+    "7": "street string",
+    "8": "detail string"
+  },
+  "consignee.v1.CreateConsigneeResponse": {
+    "1": "consignee_id uint64"
+  },
+  "consignee.v1.DeleteConsigneeRequest": {
+    "1": "consignee_id uint64"
+  },
+  "consignee.v1.DeleteConsigneeResponse": {},
+  "consignee.v1.GetConsigneeRequest": {
+    "1": "consignee_id uint64"
+  },
+  "consignee.v1.GetConsigneeResponse": {
+    "1": "consignee consignee.v1.Consignee"
+  },
+  "consignee.v1.ListConsigneesRequest": {
+    "1": "page uint32",
+    "2": "size uint32"
+  },
+  "consignee.v1.ListConsigneesResponse": {
+    "1": "items repeated consignee.v1.Consignee",
+    "2": "page uint32",
+    "3": "size uint32",
+    "4": "total uint64"
+  },
+  "consignee.v1.UpdateConsigneeRequest": {
+    "1": "consignee_id uint64",
+    "2": "is_default bool",
+    "3": "name string",
+    "4": "phone string",
+    "5": "province string",
+    "6": "city string",
+    "7": "town string",
+    "8": "street string",
+    "9": "detail string"
+  },
+  "consignee.v1.UpdateConsigneeResponse": {
+    "1": "consignee_id uint64"
+  },
+  "file.v1.CreateFileRequest": {
+    "1": "name string",
+    "2": "storage string",
+    "3": "object_key string",
+    "4": "url string",
+    "5": "size uint64",
+    "6": "content_type string"
+  },
+  "file.v1.CreateFileResponse": {
+    "1": "file_id uint64"
+  },
+  "file.v1.File": {
+    "1": "file_id uint64",
+    "2": "uploader_id uint64",
+    "3": "name string",
+    "4": "url string",
+    "5": "size uint64",
+    "6": "content_type string",
+    "7": "created_at google.protobuf.Timestamp"
+  },
+  "file.v1.GetFileRequest": {
+    "1": "file_id uint64"
+  },
+  "file.v1.GetFileResponse": {
+    "1": "file file.v1.File"
+  },
+  "goods.v1.AddGoodsImageRequest": {
+    "1": "goods_id uint64",
+    "2": "file_id uint64",
+    "3": "sort uint32"
+  },
+  "goods.v1.AddGoodsImageResponse": {
+    "1": "image_id uint64"
+  },
+  "goods.v1.AdjustStockRequest": {
+    "1": "goods_id uint64",
+    "2": "delta sint32"
+  },
+  "goods.v1.AdjustStockResponse": {
+    "1": "available uint32",
+    "2": "reserved uint32",
+    "3": "sold uint32"
+  },
+  "goods.v1.CreateGoodsRequest": {
+    "1": "goods goods.v1.GoodsInput",
+    "2": "initial_stock uint32"
+  },
+  "goods.v1.CreateGoodsResponse": {
+    "1": "goods_id uint64"
+  },
+  "goods.v1.DeleteGoodsRequest": {
+    "1": "goods_id uint64"
+  },
+  "goods.v1.DeleteGoodsResponse": {},
+  "goods.v1.GetGoodsRequest": {
+    "1": "goods_id uint64"
+  },
+  "goods.v1.GetGoodsResponse": {
+    "1": "goods goods.v1.Goods"
+  },
+  "goods.v1.Goods": {
+    "1": "goods_id uint64",
+    "10": "tags string",
+    "11": "detail_info string",
+    "12": "images repeated goods.v1.GoodsImage",
+    "13": "created_at google.protobuf.Timestamp",
+    "14": "updated_at google.protobuf.Timestamp",
+    "15": "on_shelf bool",
+    "16": "reserved uint32",
+    "17": "sort uint32",
+    "2": "name string",
+    "3": "price_cents uint64",
+    "4": "level1_category_id uint64",
+    "5": "level2_category_id uint64",
+    "6": "level3_category_id uint64",
+    "7": "brand string",
+    "8": "stock uint32",
+    "9": "sale uint32"
+  },
+  "goods.v1.GoodsImage": {
+    "1": "image_id uint64",
+    "2": "file_id uint64",
+    "3": "url string",
+    "4": "sort uint32"
+  },
+  "goods.v1.GoodsInput": {
+    "1": "name string",
+    "10": "sort uint32",
+    "2": "price_cents uint64",
+    "3": "level1_category_id uint64",
+    "4": "level2_category_id uint64",
+    "5": "level3_category_id uint64",
+    "6": "brand string",
+    "7": "reserved",
+    "8": "tags string",
+    "9": "detail_info string"
+  },
+  "goods.v1.GoodsSummary": {
+    "1": "goods_id uint64",
+    "10": "sort uint32",
+    "2": "name string",
+    "3": "price_cents uint64",
+    "4": "brand string",
+    "5": "stock uint32",
+    "6": "sale uint32",
+    "7": "tags string",
+    "8": "cover_url string",
+    "9": "on_shelf bool"
+  },
+  "goods.v1.ListGoodsRequest": {
+    "1": "category_id uint64",
+    "2": "page uint32",
+    "3": "size uint32",
+    "4": "shelf goods.v1.ShelfFilter",
+    "5": "hot_only bool"
+  },
+  "goods.v1.ListGoodsResponse": {
+    "1": "items repeated goods.v1.GoodsSummary",
+    "2": "page uint32",
+    "3": "size uint32",
+    "4": "total uint64"
+  },
+  "goods.v1.RemoveGoodsImageRequest": {
+    "1": "image_id uint64"
+  },
+  "goods.v1.RemoveGoodsImageResponse": {},
+  "goods.v1.SetGoodsShelfRequest": {
+    "1": "goods_id uint64",
+    "2": "on_shelf bool"
+  },
+  "goods.v1.SetGoodsShelfResponse": {},
+  "goods.v1.UpdateGoodsRequest": {
+    "1": "goods_id uint64",
+    "2": "goods goods.v1.GoodsInput"
+  },
+  "goods.v1.UpdateGoodsResponse": {},
+  "inventory.v1.CommitInventoryRequest": {
+    "1": "operation_id string",
+    "2": "order_id string"
+  },
+  "inventory.v1.InventoryItem": {
+    "1": "goods_id uint64",
+    "2": "quantity uint32"
+  },
+  "inventory.v1.InventoryOperationResponse": {
+    "1": "operation_id string",
+    "2": "original_outcome inventory.v1.OperationOutcome",
+    "3": "reservations repeated inventory.v1.ReservationStatus"
+  },
+  "inventory.v1.QueryInventoryOperationRequest": {
+    "1": "operation_id string"
+  },
+  "inventory.v1.QueryInventoryOperationResponse": {
+    "1": "found bool",
+    "2": "operation inventory.v1.InventoryOperationResponse"
+  },
+  "inventory.v1.ReleaseInventoryRequest": {
+    "1": "operation_id string",
+    "2": "order_id string",
+    "3": "items repeated inventory.v1.InventoryItem"
+  },
+  "inventory.v1.ReservationStatus": {
+    "1": "goods_id uint64",
+    "2": "quantity uint32",
+    "3": "state inventory.v1.ReservationState"
+  },
+  "inventory.v1.ReserveInventoryRequest": {
+    "1": "operation_id string",
+    "2": "order_id string",
+    "3": "items repeated inventory.v1.InventoryItem"
+  },
+  "order.v1.CancelOrderRequest": {
+    "1": "order_no string"
+  },
+  "order.v1.ConfirmReceiptRequest": {
+    "1": "order_no string"
+  },
+  "order.v1.CreateOrderRequest": {
+    "1": "request_id string",
+    "2": "items repeated order.v1.OrderItemInput",
+    "3": "consignee_id uint64",
+    "4": "remark string",
+    "5": "from_cart bool"
+  },
+  "order.v1.GetMyOrderRequest": {
+    "1": "order_no string"
+  },
+  "order.v1.GetOrderRequest": {
+    "1": "order_no string"
+  },
+  "order.v1.ListMyOrdersRequest": {
+    "1": "status order.v1.OrderStatus",
+    "2": "page uint32",
+    "3": "size uint32"
+  },
+  "order.v1.ListOrdersRequest": {
+    "1": "order_no string",
+    "2": "user_id uint64",
+    "3": "status order.v1.OrderStatus",
+    "4": "created_from google.protobuf.Timestamp",
+    "5": "created_to google.protobuf.Timestamp",
+    "6": "page uint32",
+    "7": "size uint32"
+  },
+  "order.v1.ListOrdersResponse": {
+    "1": "items repeated order.v1.Order",
+    "2": "page uint32",
+    "3": "size uint32",
+    "4": "total uint64"
+  },
+  "order.v1.Order": {
+    "1": "order_no string",
+    "10": "items repeated order.v1.OrderItem",
+    "11": "created_at google.protobuf.Timestamp",
+    "12": "expires_at google.protobuf.Timestamp",
+    "13": "closed_at google.protobuf.Timestamp",
+    "14": "paid_at google.protobuf.Timestamp",
+    "15": "carrier string",
+    "16": "tracking_no string",
+    "17": "shipped_at google.protobuf.Timestamp",
+    "18": "confirm_deadline google.protobuf.Timestamp",
+    "19": "completed_at google.protobuf.Timestamp",
+    "2": "user_id uint64",
+    "20": "complete_reason string",
+    "3": "status order.v1.OrderStatus",
+    "4": "close_reason string",
+    "5": "total_cents uint64",
+    "6": "consignee_name string",
+    "7": "consignee_phone string",
+    "8": "consignee_address string",
+    "9": "remark string"
+  },
+  "order.v1.OrderItem": {
+    "1": "goods_id uint64",
+    "2": "goods_name string",
+    "3": "cover_url string",
+    "4": "unit_price_cents uint64",
+    "5": "quantity uint32",
+    "6": "subtotal_cents uint64"
+  },
+  "order.v1.OrderItemInput": {
+    "1": "goods_id uint64",
+    "2": "quantity uint32"
+  },
+  "order.v1.OrderResponse": {
+    "1": "order order.v1.Order"
+  },
+  "order.v1.ShipOrderRequest": {
+    "1": "order_no string",
+    "2": "carrier string",
+    "3": "tracking_no string"
+  },
+  "payment.v1.NotifyPaymentRequest": {
+    "1": "body bytes",
+    "2": "signature string"
+  },
+  "payment.v1.NotifyPaymentResponse": {},
+  "payment.v1.PayOrderRequest": {
+    "1": "order_no string"
+  },
+  "payment.v1.PayOrderResponse": {
+    "1": "payment_id string",
+    "2": "state string",
+    "3": "amount_cents uint64",
+    "4": "pay_url string",
+    "5": "expires_at google.protobuf.Timestamp",
+    "6": "order order.v1.Order"
+  },
+  "position.v1.CreatePositionRequest": {
+    "1": "file_id uint64",
+    "2": "goods_id uint64",
+    "3": "link string",
+    "4": "sort uint32"
+  },
+  "position.v1.CreatePositionResponse": {
+    "1": "position_id uint64"
+  },
+  "position.v1.DeletePositionRequest": {
+    "1": "position_id uint64"
+  },
+  "position.v1.DeletePositionResponse": {},
+  "position.v1.ListPositionsRequest": {
+    "1": "page uint32",
+    "2": "size uint32",
+    "3": "available_only bool"
+  },
+  "position.v1.ListPositionsResponse": {
+    "1": "items repeated position.v1.Position",
+    "2": "page uint32",
+    "3": "size uint32",
+    "4": "total uint64"
+  },
+  "position.v1.Position": {
+    "1": "position_id uint64",
+    "10": "goods_on_shelf bool",
+    "2": "file_id uint64",
+    "3": "pic_url string",
+    "4": "goods_id uint64",
+    "5": "goods_name string",
+    "6": "link string",
+    "7": "sort uint32",
+    "8": "created_at google.protobuf.Timestamp",
+    "9": "updated_at google.protobuf.Timestamp"
+  },
+  "position.v1.UpdatePositionRequest": {
+    "1": "position_id uint64",
+    "2": "file_id uint64",
+    "3": "goods_id uint64",
+    "4": "link string",
+    "5": "sort uint32"
+  },
+  "position.v1.UpdatePositionResponse": {},
+  "praise.v1.CreatePraiseRequest": {
+    "1": "object_type uint32",
+    "2": "object_id uint64"
+  },
+  "praise.v1.CreatePraiseResponse": {
+    "1": "praise_id uint64"
+  },
+  "praise.v1.DeletePraiseRequest": {
+    "1": "praise_id uint64"
+  },
+  "praise.v1.DeletePraiseResponse": {},
+  "praise.v1.ListPraisesRequest": {
+    "1": "object_type uint32",
+    "2": "page uint32",
+    "3": "size uint32"
+  },
+  "praise.v1.ListPraisesResponse": {
+    "1": "items repeated praise.v1.Praise",
+    "2": "page uint32",
+    "3": "size uint32",
+    "4": "total uint64"
+  },
+  "praise.v1.Praise": {
+    "1": "praise_id uint64",
+    "2": "object_type uint32",
+    "3": "object_id uint64",
+    "4": "created_at google.protobuf.Timestamp"
+  },
+  "provider.v1.ClosePaymentRequest": {
+    "1": "payment_id string",
+    "2": "order_no string"
+  },
+  "provider.v1.CreatePaymentRequest": {
+    "1": "payment_id string",
+    "2": "order_no string",
+    "3": "amount_cents uint64",
+    "4": "currency string",
+    "5": "expires_at google.protobuf.Timestamp"
+  },
+  "provider.v1.Payment": {
+    "1": "payment_id string",
+    "2": "order_no string",
+    "3": "amount_cents uint64",
+    "4": "currency string",
+    "5": "state provider.v1.PaymentState",
+    "6": "provider_tx_id string",
+    "7": "pay_url string",
+    "8": "expires_at google.protobuf.Timestamp",
+    "9": "paid_at google.protobuf.Timestamp"
+  },
+  "provider.v1.PaymentResponse": {
+    "1": "payment provider.v1.Payment"
+  },
+  "provider.v1.QueryPaymentRequest": {
+    "1": "payment_id string"
+  },
+  "provider.v1.RefundPaymentRequest": {
+    "1": "refund_id string",
+    "2": "payment_id string",
+    "3": "amount_cents uint64"
+  },
+  "provider.v1.RefundResponse": {
+    "1": "refund_id string",
+    "2": "payment_id string",
+    "3": "amount_cents uint64"
+  },
+  "refund.v1.ApproveRefundRequest": {
+    "1": "refund_no string",
+    "2": "note string"
+  },
+  "refund.v1.CreateRefundRequest": {
+    "1": "order_no string",
+    "2": "goods_id uint64",
+    "3": "reason string"
+  },
+  "refund.v1.GetMyRefundRequest": {
+    "1": "refund_no string"
+  },
+  "refund.v1.ListMyRefundsRequest": {
+    "1": "page uint32",
+    "2": "size uint32"
+  },
+  "refund.v1.ListRefundsRequest": {
+    "1": "status refund.v1.RefundStatus",
+    "2": "page uint32",
+    "3": "size uint32"
+  },
+  "refund.v1.ListRefundsResponse": {
+    "1": "items repeated refund.v1.Refund",
+    "2": "page uint32",
+    "3": "size uint32",
+    "4": "total uint64"
+  },
+  "refund.v1.Refund": {
+    "1": "refund_no string",
+    "10": "review_note string",
+    "11": "reviewed_at google.protobuf.Timestamp",
+    "12": "refunded_at google.protobuf.Timestamp",
+    "2": "order_no string",
+    "3": "user_id uint64",
+    "4": "goods_id uint64",
+    "5": "reason string",
+    "6": "status refund.v1.RefundStatus",
+    "7": "created_at google.protobuf.Timestamp",
+    "8": "amount_cents uint64",
+    "9": "goods_name string"
+  },
+  "refund.v1.RefundResponse": {
+    "1": "refund refund.v1.Refund"
+  },
+  "refund.v1.RejectRefundRequest": {
+    "1": "refund_no string",
+    "2": "note string"
+  },
+  "rotation.v1.CreateRotationRequest": {
+    "1": "file_id uint64",
+    "2": "link string",
+    "3": "sort uint32"
+  },
+  "rotation.v1.CreateRotationResponse": {
+    "1": "rotation_id uint64"
+  },
+  "rotation.v1.DeleteRotationRequest": {
+    "1": "rotation_id uint64"
+  },
+  "rotation.v1.DeleteRotationResponse": {},
+  "rotation.v1.ListRotationsRequest": {
+    "1": "page uint32",
+    "2": "size uint32"
+  },
+  "rotation.v1.ListRotationsResponse": {
+    "1": "items repeated rotation.v1.Rotation",
+    "2": "page uint32",
+    "3": "size uint32",
+    "4": "total uint64"
+  },
+  "rotation.v1.Rotation": {
+    "1": "rotation_id uint64",
+    "2": "file_id uint64",
+    "3": "pic_url string",
+    "4": "link string",
+    "5": "sort uint32",
+    "6": "created_at google.protobuf.Timestamp",
+    "7": "updated_at google.protobuf.Timestamp"
+  },
+  "rotation.v1.UpdateRotationRequest": {
+    "1": "rotation_id uint64",
+    "2": "file_id uint64",
+    "3": "link string",
+    "4": "sort uint32"
+  },
+  "rotation.v1.UpdateRotationResponse": {},
+  "search.v1.SearchGoodsRequest": {
+    "1": "keyword string",
+    "2": "category_id uint64",
+    "3": "brand string",
+    "4": "min_price_cents uint64",
+    "5": "max_price_cents uint64",
+    "6": "sort search.v1.SortBy",
+    "7": "page uint32",
+    "8": "size uint32"
+  },
+  "search.v1.SearchGoodsResponse": {
+    "1": "items repeated search.v1.SearchHit",
+    "2": "page uint32",
+    "3": "size uint32",
+    "4": "total uint64"
+  },
+  "search.v1.SearchHit": {
+    "1": "goods_id uint64",
+    "10": "level2_category_id uint64",
+    "11": "level3_category_id uint64",
+    "2": "name string",
+    "3": "highlighted_name string",
+    "4": "price_cents uint64",
+    "5": "brand string",
+    "6": "stock uint32",
+    "7": "sale uint32",
+    "8": "cover_url string",
+    "9": "level1_category_id uint64"
+  },
+  "user.v1.ChangePasswordRequest": {
+    "1": "current_password string",
+    "2": "new_password string"
+  },
+  "user.v1.ChangePasswordResponse": {},
+  "user.v1.GetProfileRequest": {},
+  "user.v1.GetProfileResponse": {
+    "1": "profile user.v1.UserProfile"
+  },
+  "user.v1.LoginRequest": {
+    "1": "username string",
+    "2": "password string"
+  },
+  "user.v1.LoginResponse": {
+    "1": "token_type string",
+    "2": "access_token string",
+    "3": "expires_in_seconds uint32",
+    "4": "profile user.v1.UserProfile"
+  },
+  "user.v1.RegisterRequest": {
+    "1": "username string",
+    "2": "password string",
+    "3": "avatar string",
+    "4": "sex uint32",
+    "5": "sign string"
+  },
+  "user.v1.RegisterResponse": {
+    "1": "user_id uint64"
+  },
+  "user.v1.UpdateProfileRequest": {
+    "1": "avatar string",
+    "2": "sex uint32",
+    "3": "sign string"
+  },
+  "user.v1.UpdateProfileResponse": {
+    "1": "profile user.v1.UserProfile"
+  },
+  "user.v1.UserProfile": {
+    "1": "user_id uint64",
+    "2": "username string",
+    "3": "avatar string",
+    "4": "sex uint32",
+    "5": "sign string",
+    "6": "status uint32",
+    "7": "created_at google.protobuf.Timestamp"
+  }
+}

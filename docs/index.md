@@ -55,6 +55,7 @@
 | 链路追踪、Jaeger、span 脱敏 | [`development/tracing.md`](development/tracing.md) |
 | 日志格式、业务事件、日志脱敏 | [`development/logging.md`](development/logging.md) |
 | 指标、告警、Prometheus、在 Loki 查日志 | [`development/metrics.md`](development/metrics.md) |
+| 故障实验、failpoint、协议兼容快照 | [`development/fault-experiments.md`](development/fault-experiments.md) |
 | 首页轮播图、手工位 | [`development/banner-service.md`](development/banner-service.md) |
 | 开发或调试 H5 网关 | [`tutorial/01-一次请求的完整旅程.md`](tutorial/01-一次请求的完整旅程.md) |
 | 新增建表脚本、补建本地库 | [`setup/local-environment.md`](setup/local-environment.md#5-启动-mysql-和-etcd)（`make db-init`） |
@@ -107,12 +108,14 @@ cd app/gateway-h5  && go run .   # 终端 3，HTTP :8199
 - [`tasks/0018-after-sale-refunds.md`](../tasks/0018-after-sale-refunds.md)：售后审批、按商品退款、模拟器部分退款。
 - [`tasks/0019-structured-logging.md`](../tasks/0019-structured-logging.md)：JSON 结构化日志、业务事件、日志脱敏。
 - [`tasks/0020-metrics-and-alerts.md`](../tasks/0020-metrics-and-alerts.md)：指标、告警、日志集中收集到 Loki。
+- [`tasks/0021-fault-experiments.md`](../tasks/0021-fault-experiments.md)：故障实验 T1–T10、C1，failpoint；修复购物车和事件重发的两个问题。
 
 ## 下一阶段
 
-交易闭环和可观测性（链路、日志、指标与告警）都已完成，日志诊断 Agent 需要的三样信号都能集中查询。接下来：
+交易闭环、可观测性和故障实验都已完成：系统在设计 §10 的 11 种故障下都能恢复到正确状态，并且留下可以查询的日志、指标和链路。日志诊断 Agent 的前提已经具备。接下来：
 
-1. **0021 故障实验**：把详细设计 §10 的 T1–T10 做成可以重复执行的测试。
-2. 网关把 gRPC 状态码映射为 HTTP 状态码（现在所有业务错误都是 HTTP 200，只靠响应体 `code` 区分）；把集成测试扩展到其他 repository；事件的持久重试表与保留期清理。
+1. **日志诊断 Agent**（`AGENTS.md` 的项目目标）：只读工具查询 Loki、Prometheus、Jaeger 和部署信息，区分事实证据与推断，引用遥测标识。故障实验的报告就是评估它的标准答案。
+2. 压测（`make bench-trade`，设计 §10）。
+3. 网关把 gRPC 状态码映射为 HTTP 状态码（现在所有业务错误都是 HTTP 200，只靠响应体 `code` 区分）；把集成测试扩展到其他 repository；事件的持久重试表与保留期清理。
 
 优惠券不在第一版交易验收范围内（详细设计 §1）。如果要做，按订单状态机设计（下单锁券、支付核销、取消或退款退券），不照搬教程的 CRUD 加注册送券。

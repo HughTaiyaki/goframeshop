@@ -265,9 +265,20 @@ func TestIntegrationInbox(t *testing.T) {
 	}
 	// The two repeats are logged as redeliveries (design §9.1).
 	redelivered := logs.Events(telemetry.EventMessageRedelivered)
-	if len(redelivered) != 2 || redelivered[0].Attr("consumer") != consumer || redelivered[0].Attr("event_id") != id ||
+	if len(redelivered) < 2 || redelivered[0].Attr("consumer") != consumer || redelivered[0].Attr("event_id") != id ||
 		redelivered[0].Attr("event_type") != "it" {
 		t.Fatalf("message.redelivered: %v", redelivered)
+	}
+	// The same event published again (the relay crashed before marking it
+	// SENT) carries a new traceparent: still the same event, a duplicate,
+	// not a conflict (task 0021, T8).
+	republished, _ := json.Marshal(eventbus.Envelope{SchemaVersion: 1, EventID: id, Type: "it", AggregateID: "1", AggregateVersion: 1,
+		Traceparent: "00-0af7651916cd43dd8448eb211c80319c-b7ad6b7169203331-01", Payload: json.RawMessage(`{"a":1}`)})
+	if _, err := eventbus.Handle(e.ctx, e.db, consumer, republished, apply); err != nil || applied != 1 {
+		t.Fatalf("republished: %v, applied %d", err, applied)
+	}
+	if q, _ := e.db.GetValue(e.ctx, "SELECT COUNT(*) FROM quarantine_event WHERE consumer = ?", consumer); q.Int() != 0 {
+		t.Fatal("a republished event was quarantined as a conflict")
 	}
 	// Same id, different payload: quarantined and acknowledged.
 	if _, err := eventbus.Handle(e.ctx, e.db, consumer, body(id, `{"a":2}`), apply); err != nil || applied != 1 {

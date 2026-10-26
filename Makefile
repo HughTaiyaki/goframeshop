@@ -48,6 +48,14 @@ verify:
 	@go mod verify
 	@go test ./...
 
+# Fault experiments (task 0021, design §10): builds and starts user, goods,
+# order and the payment simulator, injects faults, checks the invariants and
+# writes reports/fault/<time>/report.md. Needs `make infra-up` and the
+# service ports free (stop locally running copies first).
+.PHONY: fault-trade
+fault-trade:
+	@GOFRAMESHOP_FAULT=1 go test ./tests/fault/ -run TestFaultTrade -count=1 -timeout 20m -v
+
 # Prints a new Ed25519 key pair. The private key belongs to app/user only; the
 # public key goes to every service and gateway that verifies tokens.
 .PHONY: jwt-keys

@@ -17,6 +17,7 @@ import (
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/trace"
 
+	"github.com/hughtaiyaki/goframeshop/utility/failpoint"
 	"github.com/hughtaiyaki/goframeshop/utility/rabbitmq"
 	"github.com/hughtaiyaki/goframeshop/utility/telemetry"
 )
@@ -184,6 +185,8 @@ func (r *Relay) publish(ctx context.Context, row *outboxRow) bool {
 		r.failed(ctx, span, row, err)
 		return false
 	}
+	// Fault experiment T8: the broker has it, the row still says PENDING.
+	_ = failpoint.Inject("eventbus.relay.after-publish")
 	if err := r.mark(ctx, row.Id, g.Map{"state": stateSent, "sent_at": gtime.New(r.now()), "owner": nil, "lease_until": nil, "last_error": nil}); err != nil {
 		// Published but not marked: it will be sent again. Harmless.
 		g.Log().Warningf(ctx, "outbox event %s published, but marking it sent failed: %v", row.EventId, err)

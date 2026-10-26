@@ -29,6 +29,7 @@ import (
 
 	"github.com/hughtaiyaki/goframeshop/app/order/internal/service"
 	"github.com/hughtaiyaki/goframeshop/utility"
+	"github.com/hughtaiyaki/goframeshop/utility/failpoint"
 	"github.com/hughtaiyaki/goframeshop/utility/telemetry"
 )
 
@@ -140,6 +141,8 @@ func (s *sOrder) confirm(ctx context.Context, order *service.Order, p *service.P
 	if p.PaidAt != nil {
 		paidAt = *p.PaidAt
 	}
+	// Fault experiment T5: hold the payment here while the order is closed.
+	_ = failpoint.Inject("order.payment.before-record")
 	outcome, err := s.payments.ConfirmPaid(ctx, order.ID, &service.Payment{
 		ID: p.ID, OrderID: order.ID, AmountCents: p.AmountCents, State: service.PaymentSucceeded, ProviderTxID: p.TxID,
 	}, paidAt)

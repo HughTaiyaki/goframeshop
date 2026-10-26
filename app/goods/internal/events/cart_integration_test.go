@@ -119,8 +119,10 @@ func TestIntegrationOrderPlacedTakesGoodsOutOfTheCart(t *testing.T) {
 		}
 		return out
 	}
-	const kept, emptied, changedLater, other = 11, 12, 13, 14
-	for goodsID, q := range map[uint64]uint32{kept: 3, emptied: 1, changedLater: 2, other: 5} {
+	// halved: 2 in the cart, 1 bought. What is left (1) is not more than
+	// what was bought, the case task 0021's T7 caught: it must stay.
+	const kept, emptied, changedLater, other, halved = 11, 12, 13, 14, 15
+	for goodsID, q := range map[uint64]uint32{kept: 3, emptied: 1, changedLater: 2, other: 5, halved: 2} {
 		if _, err := repo.Add(ctx, userID, goodsID, q, service.MaxCartQuantity); err != nil {
 			t.Fatal(err)
 		}
@@ -140,6 +142,7 @@ func TestIntegrationOrderPlacedTakesGoodsOutOfTheCart(t *testing.T) {
 		OrderNo: "IT" + uuid.NewString()[:8], UserID: userID, PlacedAt: at, FromCart: true,
 		Items: []eventbus.OrderPlacedItem{
 			{GoodsID: kept, Quantity: 1},
+			{GoodsID: halved, Quantity: 1},
 			{GoodsID: emptied, Quantity: 1},
 			{GoodsID: changedLater, Quantity: 2},
 			{GoodsID: 99, Quantity: 1}, // never in the cart
@@ -150,7 +153,7 @@ func TestIntegrationOrderPlacedTakesGoodsOutOfTheCart(t *testing.T) {
 	if err := x.Handle(ctx, delivery); err != nil {
 		t.Fatal(err)
 	}
-	want := map[uint64]uint32{kept: 2, changedLater: 4, other: 5}
+	want := map[uint64]uint32{kept: 2, changedLater: 4, other: 5, halved: 1}
 	got := quantities()
 	if len(got) != len(want) {
 		t.Fatalf("cart %v, want %v", got, want)

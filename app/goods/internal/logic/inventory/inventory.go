@@ -31,6 +31,7 @@ import (
 	"strings"
 
 	"github.com/hughtaiyaki/goframeshop/app/goods/internal/service"
+	"github.com/hughtaiyaki/goframeshop/utility/failpoint"
 	"github.com/hughtaiyaki/goframeshop/utility/telemetry"
 )
 
@@ -52,6 +53,12 @@ var errNotReady = errors.New("nothing to commit yet")
 func (s *sInventory) Reserve(ctx context.Context, operationID, orderID string, items []service.InventoryItem) (*service.OperationResult, error) {
 	result, err := s.reserve(ctx, operationID, orderID, items)
 	logOperation(ctx, telemetry.EventInventoryReserved, operationID, orderID, items, result, err)
+	if err == nil {
+		// Fault experiment T3: committed, but the caller never hears so.
+		if ferr := failpoint.Inject("goods.reserve.after-commit"); ferr != nil {
+			return nil, ferr
+		}
+	}
 	return result, err
 }
 

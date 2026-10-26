@@ -2,6 +2,17 @@
 
 每完成一个任务，在最上面加一节：新增了什么、改了什么、有哪些需要手动执行的步骤。细节和决定见对应的任务文件。
 
+## 0021 · 故障实验
+
+[任务文件](../tasks/0021-fault-experiments.md) · [开发说明](development/fault-experiments.md)
+
+- **新增 `make fault-trade`**：构建并启动 user、goods、order、paysim，在真实进程上跑设计 §10 的 T1–T10 和崩溃恢复实验 C1，每个实验后检查不变量，报告写到 `reports/fault/<时间>/`。现在 11 / 11 通过，约 40 秒。
+- **新增 `utility/failpoint`**：5 个命名的注入点（崩溃、响应丢失、屏障暂停），只有设置 `GOFRAMESHOP_FAILPOINTS` 时生效。
+- **新增 T10 协议兼容检查**：和 `tests/fault/testdata/proto_snapshot.json` 对比，随 `go test ./...` 运行。
+- **修复：从购物车下单后，剩下的数量不超过买走的数量时，购物车整行被删**（任务 0016 的问题，T7 发现）。
+- **修复：投递器崩溃后重发的事件被当成冲突隔离**（任务 0013 的问题，T8 发现）。Inbox 的指纹改为只覆盖事件内容，不包括每次发送都不同的链路上下文；旧的记录照样能匹配。
+- **需要手动执行**：无。跑实验前先停掉本地正在运行的 user、goods、order、paysim。
+
 ## 0020 · 指标、告警与日志集中收集
 
 [任务文件](../tasks/0020-metrics-and-alerts.md) · [开发说明](development/metrics.md)

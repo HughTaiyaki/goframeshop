@@ -151,12 +151,16 @@ func RemoveOrderedTx(ctx context.Context, tx gdb.TX, placed eventbus.OrderPlaced
 	at := placed.PlacedAt
 	changed := 0
 	for _, item := range placed.Items {
+		// Remove before decrementing: the other way round, a row left with
+		// no more than the bought quantity after the decrement (2 in the
+		// cart, 1 bought) would match the delete as well and vanish. Each
+		// row matches exactly one of the two.
 		statements := []struct {
 			sql  string
 			args []any
 		}{
-			{cartDecrementSQL, []any{item.Quantity, placed.UserID, item.GoodsID, at, item.Quantity}},
 			{cartRemoveSQL, []any{placed.UserID, item.GoodsID, at, item.Quantity}},
+			{cartDecrementSQL, []any{item.Quantity, placed.UserID, item.GoodsID, at, item.Quantity}},
 		}
 		for _, st := range statements {
 			result, err := tx.Exec(st.sql, st.args...)

@@ -28,3 +28,7 @@ app/gateway-admin/uploads/
 
 # Binaries from `go build ./app/<name>` run in the repository root.
 /admin
+
+# Fault experiment runs: reports, process logs and the experiment copies of
+# the local configs (which hold passwords). See tests/fault.
+/reports/fault/*/

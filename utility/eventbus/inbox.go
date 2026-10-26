@@ -7,6 +7,7 @@ import (
 	"github.com/gogf/gf/v2/database/gdb"
 	"github.com/gogf/gf/v2/frame/g"
 
+	"github.com/hughtaiyaki/goframeshop/utility/failpoint"
 	"github.com/hughtaiyaki/goframeshop/utility/telemetry"
 )
 
@@ -33,7 +34,7 @@ func Handle(ctx context.Context, db gdb.DB, consumer string, body []byte, apply 
 	if err := json.Unmarshal(body, &e); err != nil || e.EventID == "" || e.Type == "" || e.SchemaVersion != SchemaVersion {
 		return false, quarantine(ctx, db, consumer, e.EventID, "malformed envelope", body)
 	}
-	fingerprint := hash(body)
+	fingerprint := contentHash(&e)
 	applied := false
 	conflict := false
 	err := db.Transaction(ctx, func(ctx context.Context, tx gdb.TX) error {
@@ -53,7 +54,8 @@ func Handle(ctx context.Context, db gdb.DB, consumer string, body []byte, apply 
 			if err != nil {
 				return err
 			}
-			conflict = seen.String() != fingerprint
+			// Rows written before task 0021 hold the hash of the whole body.
+			conflict = seen.String() != fingerprint && seen.String() != hash(body)
 			return nil
 		}
 		if err := apply(ctx, tx, &e); err != nil {
@@ -64,6 +66,10 @@ func Handle(ctx context.Context, db gdb.DB, consumer string, body []byte, apply 
 	})
 	if err != nil {
 		return false, err
+	}
+	if applied {
+		// Fault experiment T7: committed, not yet acknowledged.
+		_ = failpoint.Inject("eventbus.inbox.after-commit")
 	}
 	if conflict {
 		return false, quarantine(ctx, db, consumer, e.EventID, "event id reused with a different payload", body)
@@ -87,4 +93,19 @@ func quarantine(ctx context.Context, db gdb.DB, consumer, eventID, reason string
 		"consumer": consumer, "event_id": eventID, "reason": reason, "body": body,
 	}).Insert()
 	return err
+}
+
+// contentHash fingerprints what makes an event that event: its type,
+// aggregate, version and payload. Transport details are left out on
+// purpose: each publish of the same event (a relay retry after a crash)
+// carries its own traceparent, and a redelivery must still be recognised as
+// the same event, not quarantined as a conflicting one (task 0021, T8).
+func contentHash(e *Envelope) string {
+	canonical, _ := json.Marshal(struct {
+		Type             string          `json:"type"`
+		AggregateID      string          `json:"aggregate_id"`
+		AggregateVersion uint64          `json:"aggregate_version"`
+		Payload          json.RawMessage `json:"payload"`
+	}{e.Type, e.AggregateID, e.AggregateVersion, e.Payload})
+	return hash(canonical)
 }

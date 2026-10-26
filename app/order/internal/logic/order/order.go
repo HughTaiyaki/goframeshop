@@ -38,6 +38,7 @@ import (
 
 	"github.com/hughtaiyaki/goframeshop/app/order/internal/service"
 	"github.com/hughtaiyaki/goframeshop/utility/eventbus"
+	"github.com/hughtaiyaki/goframeshop/utility/failpoint"
 	"github.com/hughtaiyaki/goframeshop/utility/telemetry"
 )
 
@@ -178,6 +179,8 @@ func (s *sOrder) create(ctx context.Context, userID uint64, in *service.CreateIn
 	if err != nil {
 		return nil, err
 	}
+	// Fault experiment C1: the order is stored, the stock not yet asked for.
+	_ = failpoint.Inject("order.create.after-insert")
 
 	s.reserve(ctx, order)
 	return s.orders.FindByNo(ctx, order.No)
